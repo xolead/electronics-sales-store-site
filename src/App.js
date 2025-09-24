@@ -1,18 +1,45 @@
-import logo from './logo.svg';
 import './App.css';
+import React from 'react';
 
-function App() {
+
+const App = () => {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <a href="https://vk.com/xolead" target="_blank">
-      <button className="button_my">
-      не нажимай
-      </button>
-      </a>
-      </header>
+        <Header />
+          <ShoppingList_box>
+            
+            <ShoppingList />
+          </ShoppingList_box>
     </div>
+  );
+}
+
+
+function Header () {
+  return(
+    <>
+    <div className="header">
+      <div className='header_box'>
+        <img src="/img/cart.png" className='cart'></img>
+      </div>
+    </div>
+    </>
+  );
+}
+
+function ShoppingList () {
+    return(
+      <>
+      <div className="shop_products">
+          
+      </div>
+      </>
+    );
+}
+
+function ShoppingList_box () {
+  return(
+    <div className='ShoppingList_box'></div>
   );
 }
 
