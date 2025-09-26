@@ -1,18 +1,30 @@
 import './App.css';
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Create from './pages/Create';
 
 
 const App = () => {
   return (
-    <div className="App">
-        <Header />
-          <ShoppingList_box>
-            <ShoppingList />
-          </ShoppingList_box>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/create" element={<Create />} />
+      </Routes>
+    </Router>
   );
 }
 
+function HomePage() {
+  return (
+    <div className="App">
+      <Header />
+      <ShoppingList_box>
+        <ShoppingList />
+      </ShoppingList_box>
+    </div>
+  );
+}
 
 function Header () {
   return(
@@ -20,6 +32,9 @@ function Header () {
     <div className="header">
       <div className='header_box'>
         <img src="/img/cart.png" className='cart'></img>
+        <Link to="/create" className="about-link">
+          Добавить  
+        </Link>
       </div>
     </div>
     </>

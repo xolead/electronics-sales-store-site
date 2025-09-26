@@ -17,6 +17,7 @@
 .header_box{
   display: flex;
   flex-direction: row-reverse;
+  justify-content: space-around;
   height: 70px;
   align-items: center;
   padding-left: 400px;
