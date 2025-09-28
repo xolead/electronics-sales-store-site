@@ -20,3 +20,9 @@ type S3SImage struct {
 	URL    string `json:"url"`
 	FileID string `json:"file_id"`
 }
+
+type CreateProductResponse struct {
+	code    int
+	message string
+	URLs    []string
+}

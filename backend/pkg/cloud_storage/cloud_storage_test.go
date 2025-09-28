@@ -1,6 +1,7 @@
 package cloudstorage_test
 
 import (
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -41,4 +42,28 @@ func TestUploadURL(t *testing.T) {
 	defer resp.Body.Close()
 
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
+}
+
+func TestDownloadURL(t *testing.T) {
+	s3s, err := cloudstorage.NewS3S(cfg)
+
+	assert.NoError(t, err)
+
+	image, err := s3s.DownloadURL("tests/538df24c-8ffd-483f-83b6-704d4033e973")
+
+	resp, err := http.Get(image.URL)
+	assert.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+	file, err := os.Create("test_download.txt")
+	assert.NoError(t, err)
+
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	assert.NoError(t, err)
+
 }

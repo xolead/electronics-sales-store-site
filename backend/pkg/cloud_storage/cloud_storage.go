@@ -17,6 +17,8 @@ import (
 
 type CloudStorage interface {
 	UploadURL(filename string) (models.S3SImage, error)
+	DownloadURL(key string) (models.S3SImage, error)
+	DeleteURL(key string) (models.S3SImage, error)
 }
 
 type s3Storage struct {
@@ -72,17 +74,17 @@ func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
 }
 
 func (s3s *s3Storage) UploadURL(filename string) (models.S3SImage, error) {
-	fileID := uuid.New()
-	image := models.S3SImage{FileID: fileID.String()}
 	presignClient := s3.NewPresignClient(s3s.Client)
 
 	mime := filepath.Ext(filename)
+	fileID := uuid.New().String() + mime
+	image := models.S3SImage{FileID: fileID}
 
 	expires := 10 * time.Minute
 
 	presignResult, err := presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(s3s.bucket),
-		Key:         aws.String(s3s.folder + "/" + fileID.String()),
+		Key:         aws.String(s3s.folder + "/" + fileID),
 		ContentType: aws.String(mime),
 	}, s3.WithPresignExpires(expires))
 
@@ -92,6 +94,52 @@ func (s3s *s3Storage) UploadURL(filename string) (models.S3SImage, error) {
 
 	image.URL = presignResult.URL
 
+	return image, nil
+
+}
+
+func (s3s *s3Storage) DownloadURL(key string) (models.S3SImage, error) {
+	presignClient := s3.NewPresignClient(s3s.Client)
+
+	image := models.S3SImage{
+		FileID: key,
+	}
+	expires := 30 * time.Minute
+
+	presignResult, err := presignClient.PresignGetObject(
+		context.TODO(), &s3.GetObjectInput{
+			Bucket: aws.String(s3s.bucket),
+			Key:    aws.String(key)},
+		s3.WithPresignExpires(expires),
+	)
+
+	if err != nil {
+		return image, err
+	}
+
+	image.URL = presignResult.URL
+	return image, nil
+
+}
+
+func (s3s *s3Storage) DeleteURL(key string) (models.S3SImage, error) {
+	image := models.S3SImage{
+		FileID: key,
+	}
+	presignClient := s3.NewPresignClient(s3s.Client)
+
+	presignResult, err := presignClient.PresignDeleteObject(
+		context.TODO(), &s3.DeleteObjectInput{
+			Bucket: aws.String(s3s.bucket),
+			Key:    aws.String(key)},
+		s3.WithPresignExpires(15*time.Minute),
+	)
+
+	if err != nil {
+		return image, err
+	}
+
+	image.URL = presignResult.URL
 	return image, nil
 
 }

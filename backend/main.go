@@ -1,55 +1,21 @@
 package main
 
 import (
-	"context"
 	"log"
-	"os"
+	"net/http"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/gorilla/mux"
+
+	"electronic/pkg/handlers"
 )
 
 func main() {
 
-	endpoint := "https://s3.regru.cloud"
-	accessKey := "YS6GNF9VB0C96CDD63FG"
-	secretKey := "kHGLbd7xtmMrNuoHuo249owr54CPvN8B5vVOEHc0"
-	region := "ru-central1"
+	router := mux.NewRouter()
 
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion(region),
-		config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
-		),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
+	router.HandleFunc("/product", handlers.CreateProduct).Methods("POST")
+	router.HandleFunc("/product", handlers.ReadAllProduct).Methods("GET")
+	router.HandleFunc("/product/{id}", handlers.ReadProduct).Methods("GET")
 
-	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(endpoint)
-	})
-
-	// Тестируем подключение
-	file, err := os.Open("lol.txt")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	buc := "electronic"
-	key := "product/lol.txt"
-	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: &buc,
-		Key:    &key,
-		Body:   file,
-	})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	log.Fatal(http.ListenAndServe(":8080", router))
 }

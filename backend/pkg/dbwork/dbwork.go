@@ -21,7 +21,7 @@ type DataBase interface {
 	VerifyPassword(login, password string) (bool, error)
 	CreateProduct(pr models.Product) (int, error)
 	UpdateProduct()
-	DeleteProduct(id int) error
+	DeleteProduct(id int) ([]string, error)
 	ReadProduct(id int) (models.Product, error)
 	ReadListProduct() ([]models.Product, error)
 	RunMigrations(path string) error
@@ -223,18 +223,36 @@ func (postgres *postgreSQL) ChangeCountProduct(id, countChange int) error {
 
 }
 
-func (postgres *postgreSQL) DeleteProduct(id int) error {
+func (postgres *postgreSQL) DeleteProduct(id int) ([]string, error) {
+	keys := make([]string, 0)
+
+	selectQuery := `SELECT key FROM product_image WHERE product_id=$1`
+
+	rows, err := postgres.Query(selectQuery, id)
+	if err != nil {
+		return keys, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		key := ""
+		if err = rows.Scan(&key); err != nil {
+			return keys, err
+		}
+		keys = append(keys, key)
+	}
+
 	deleteQueryImage := `DELETE FROM product_image WHERE product_id=$1`
 	if _, err := postgres.Exec(deleteQueryImage, id); err != nil {
-		return err
+		return keys, err
 	}
 
 	deleteQueryProduct := `DELETE FROM product WHERE id=$1`
 	if _, err := postgres.Exec(deleteQueryProduct, id); err != nil {
-		return err
+		return keys, err
 	}
 
-	return nil
+	return keys, nil
 }
 
 func (postgres *postgreSQL) ReadProduct(id int) (models.Product, error) {
