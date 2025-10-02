@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './Create.css';
 
+
 const Create = () => {
   const [productData, setProductData] = useState({
     name: '',
@@ -12,6 +13,44 @@ const Create = () => {
   const [previewImages, setPreviewImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+
+
+ // Функция создания продукта
+ const createProduct = async (productData, images) => {
+  try {
+    // Формируем FormData для отправки файлов
+    const formData = new FormData();
+    
+    // Добавляем текстовые данные
+    formData.append('name', productData.name);
+    formData.append('price', productData.price);
+    formData.append('category', productData.category);
+    formData.append('description', productData.description);
+    
+    // Добавляем изображения
+    images.forEach((image, index) => {
+      formData.append('images', image.file);
+    });
+
+    const response = await fetch('http://localhost:8080/products', {
+      method: 'POST',
+      body: formData, // Не нужно указывать Content-Type для FormData - браузер сам установит
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Ошибка при создании товара');
+    }
+
+    const result = await response.json();
+    return result;
+
+  } catch (error) {
+    console.error('Ошибка при создании товара:', error);
+    throw error;
+  }
+};
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
