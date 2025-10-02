@@ -15,18 +15,16 @@ import (
 
 func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	resp := service.ResponseCreateProduct{}
-	log.Println("CReate product handlers")
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler CreateProduct ошибка чтения данных: %w", err))
-		resp.ErrorResponse(0, "")
+		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения данных")
 		resp.Write(rw)
 		return
 	}
 
-	req := service.RequestCreateProduct{}
+	req := service.Product{}
 	err = json.Unmarshal(data, &req)
-
 	if err != nil {
 		log.Println(fmt.Errorf("Handlers create product ошибка декодирования json: %w", err))
 		resp.ErrorResponse(http.StatusBadRequest, "Ой что-то сломалось")
@@ -38,23 +36,58 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	resp.Write(rw)
 }
 
-func ReadProduct(rw http.ResponseWriter, r *http.Request) {
-	resp := service.ResponseReadProduct{}
-	log.Println("REad product handlers")
-	vars := mux.Vars(r)
-	srtID := vars["id"]
-	id, err := strconv.Atoi(srtID)
+func ChangeCountProduct(rw http.ResponseWriter, r *http.Request) {
+
+	resp := service.Response{}
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		resp.ErrorResponse(http.StatusBadRequest, "Не найден ID")
+		log.Println(fmt.Errorf("Handler ChangeCountProduct: %w", err))
+		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения данных")
+		resp.Write(rw)
+		return
+	}
+	req := service.RequestChangeCount{}
+	if err = json.Unmarshal(data, &req); err != nil {
+		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения json")
 		resp.Write(rw)
 		return
 	}
 
-	resp = service.ReadProduct(service.RequestReadProduct{ID: id})
+	resp = service.ChangeCountProduct(req)
+	resp.Write(rw)
+}
+
+func ReadProduct(rw http.ResponseWriter, r *http.Request) {
+	resp := service.ResponseReadProduct{}
+	vars := mux.Vars(r)
+	strID := vars["id"]
+	id, err := strconv.Atoi(strID)
+	if err != nil {
+		resp.ErrorResponse(http.StatusBadRequest, "Не найден ID в запросе")
+		resp.Write(rw)
+		return
+	}
+
+	resp = service.ReadProduct(id)
 	resp.Write(rw)
 }
 
 func ReadAllProduct(rw http.ResponseWriter, r *http.Request) {
 	resp := service.ReadAllProduct()
+	resp.Write(rw)
+}
+
+func DeleteProduct(rw http.ResponseWriter, r *http.Request) {
+	resp := service.Response{}
+	vars := mux.Vars(r)
+	strID := vars["id"]
+	id, err := strconv.Atoi(strID)
+	if err != nil {
+		resp.ErrorResponse(http.StatusBadRequest, "Не найден ID в запросе")
+		resp.Write(rw)
+		return
+	}
+
+	resp = service.DeleteProduct(id)
 	resp.Write(rw)
 }

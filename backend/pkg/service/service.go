@@ -30,14 +30,6 @@ type ResponseCreateProduct struct {
 	URLs []string `json:"urls"`
 }
 
-type RequestCreateProduct struct {
-	Product
-}
-
-type RequestReadProduct struct {
-	ID int
-}
-
 type ResponseReadProduct struct {
 	Response
 	Product
@@ -51,10 +43,6 @@ type ResponseReadAllProduct struct {
 type RequestChangeCount struct {
 	ID    int
 	Count int
-}
-
-type RequestDeleteProduct struct {
-	ID int
 }
 
 func (resp *Response) Write(rw http.ResponseWriter) {
@@ -97,9 +85,8 @@ func (resp *Response) StatusCreated() {
 	resp.Message = "Объект успешно создан"
 }
 
-func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
+func CreateProduct(product Product) ResponseCreateProduct {
 	resp := ResponseCreateProduct{}
-	log.Println("===================")
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
@@ -114,14 +101,15 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 		resp.ErrorResponse(0, "")
 		return resp
 	}
+
 	productDB := models.Product{
 		Description: product.Description,
 		Name:        product.Name,
 		Count:       product.Count,
 		Parameters:  product.Parameters,
+		Images:      make([]models.ProductImage, len(product.Images)),
 	}
-	urls := make([]string, 0, len(product.Images))
-
+	urls := make([]string, len(product.Images))
 	for i, name := range product.Images {
 		image, err := s3s.UploadURL(name)
 		if err != nil {
@@ -131,6 +119,7 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 		}
 		urls = append(urls, image.URL)
 		productDB.Images[i].Key = image.FileID
+		productDB.Images[i].Name = name
 	}
 
 	_, err = psql.CreateProduct(productDB)
@@ -145,7 +134,7 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 	return resp
 }
 
-func ReadProduct(req RequestReadProduct) ResponseReadProduct {
+func ReadProduct(id int) ResponseReadProduct {
 
 	resp := ResponseReadProduct{}
 
@@ -165,7 +154,7 @@ func ReadProduct(req RequestReadProduct) ResponseReadProduct {
 		return resp
 	}
 
-	product, err = psql.ReadProduct(req.ID)
+	product, err = psql.ReadProduct(id)
 	if err != nil {
 		log.Println(err)
 		resp.ErrorResponse(0, "")
@@ -267,7 +256,7 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 	return resp
 }
 
-func DeleteProduct(req RequestDeleteProduct) Response {
+func DeleteProduct(id int) Response {
 	resp := Response{}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
@@ -284,7 +273,7 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 		return resp
 	}
 
-	keys, err := psql.DeleteProduct(req.ID)
+	keys, err := psql.DeleteProduct(id)
 	for _, key := range keys {
 		image, err := s3s.DeleteURL(key)
 		if err != nil {
