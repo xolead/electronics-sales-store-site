@@ -30,10 +30,6 @@ type ResponseCreateProduct struct {
 	URLs []string `json:"urls"`
 }
 
-type RequestReadProduct struct {
-	ID int
-}
-
 type ResponseReadProduct struct {
 	Response
 	Product
@@ -47,10 +43,6 @@ type ResponseReadAllProduct struct {
 type RequestChangeCount struct {
 	ID    int
 	Count int
-}
-
-type RequestDeleteProduct struct {
-	ID int
 }
 
 func (resp *Response) Write(rw http.ResponseWriter) {
@@ -142,7 +134,7 @@ func CreateProduct(product Product) ResponseCreateProduct {
 	return resp
 }
 
-func ReadProduct(req RequestReadProduct) ResponseReadProduct {
+func ReadProduct(id int) ResponseReadProduct {
 
 	resp := ResponseReadProduct{}
 
@@ -162,7 +154,7 @@ func ReadProduct(req RequestReadProduct) ResponseReadProduct {
 		return resp
 	}
 
-	product, err = psql.ReadProduct(req.ID)
+	product, err = psql.ReadProduct(id)
 	if err != nil {
 		log.Println(err)
 		resp.ErrorResponse(0, "")
@@ -264,7 +256,7 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 	return resp
 }
 
-func DeleteProduct(req RequestDeleteProduct) Response {
+func DeleteProduct(id int) Response {
 	resp := Response{}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
@@ -281,7 +273,7 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 		return resp
 	}
 
-	keys, err := psql.DeleteProduct(req.ID)
+	keys, err := psql.DeleteProduct(id)
 	for _, key := range keys {
 		image, err := s3s.DeleteURL(key)
 		if err != nil {
