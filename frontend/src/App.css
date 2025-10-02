@@ -30,6 +30,17 @@
   display: flex;
 }
 
+.create-link {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.create-link:hover {
+  color: #007bff;
+}
+
 .ShoppingList_box{
   padding-left: 350px;
   padding-right: 350px;

@@ -32,7 +32,7 @@ function Header () {
     <div className="header">
       <div className='header_box'>
         <img src="/img/cart.png" className='cart'></img>
-        <Link to="/create" className="about-link">
+        <Link to="/create" className="create-link">
           Добавить  
         </Link>
       </div>
