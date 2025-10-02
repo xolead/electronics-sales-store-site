@@ -1,23 +1,15 @@
-CREATE TABLE users(
-  id BIGSERIAL PRIMARY KEY,
-  login TEXT,
-  password VARCHAR
-);
-
 CREATE TABLE product(
   id BIGSERIAL PRIMARY KEY,
-  name TEXT
+  name TEXT,
+  description TEXT,
+  parameters TEXT,
+  count INTEGER CHECK (count >= 0) NOT NULL
 );
 
-CREATE TABLE producr_image(
+CREATE TABLE product_image(
   id BIGSERIAL PRIMARY KEY,
   product_id INTEGER REFERENCES product (id) ON DELETE CASCADE,
-  file_name VARCHAR(255) NOT NULL,
-  original_name VARCHAR(255),
-  s3_bucket VARCHAR(255) NOT NULL,
-  s3_key VARCHAR(500) NOT NULL,
-  mime_type VARCHAR(100),
-  file_size BIGINT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  name VARCHAR(255) NOT NULL,
+  key VARCHAR(500) NOT NULL UNIQUE
 );
 
