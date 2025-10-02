@@ -20,17 +20,22 @@ var cfg cloudstorage.S3StorageConfig = cloudstorage.S3StorageConfig{
 	Folder:    "tests",
 }
 
-func TestUploadURL(t *testing.T) {
+func TestUploadDonloadDeleteURL(t *testing.T) {
+
+	//Загрузка
 	s3s, err := cloudstorage.NewS3S(cfg)
 	assert.NoError(t, err)
 
-	image, err := s3s.UploadURL("leva.txt")
+	name := "omg.txt"
+
+	image, err := s3s.UploadURL(name)
 	assert.NoError(t, err)
 
-	file, err := os.Open("test.txt")
+	file, err := os.Open("tests/" + name)
 	assert.NoError(t, err)
 	defer file.Close()
 
+	key := image.FileID
 	req, err := http.NewRequest("PUT", image.URL, file)
 	assert.NoError(t, err)
 
@@ -42,23 +47,20 @@ func TestUploadURL(t *testing.T) {
 	defer resp.Body.Close()
 
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
-}
 
-func TestDownloadURL(t *testing.T) {
-	s3s, err := cloudstorage.NewS3S(cfg)
+	// Скачивание
 
-	assert.NoError(t, err)
+	image, err = s3s.DownloadURL(key)
 
-	image, err := s3s.DownloadURL("tests/538df24c-8ffd-483f-83b6-704d4033e973")
-
-	resp, err := http.Get(image.URL)
+	resp, err = http.Get(image.URL)
 	assert.NoError(t, err)
 
 	defer resp.Body.Close()
 
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
-	file, err := os.Create("test_download.txt")
+	downloadName := "omg_download.txt"
+	file, err = os.Create("tests/" + downloadName)
 	assert.NoError(t, err)
 
 	defer file.Close()
@@ -66,4 +68,17 @@ func TestDownloadURL(t *testing.T) {
 	_, err = io.Copy(file, resp.Body)
 	assert.NoError(t, err)
 
+	// Удаление
+	image, err = s3s.DeleteURL(key)
+	assert.NoError(t, err)
+
+	req, err = http.NewRequest("DELETE", image.URL, nil)
+
+	assert.NoError(t, err)
+
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+
+	defer resp.Body.Close()
+	assert.Equal(t, resp.StatusCode, http.StatusNoContent)
 }

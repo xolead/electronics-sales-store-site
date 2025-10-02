@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -13,9 +15,10 @@ import (
 
 func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	resp := service.ResponseCreateProduct{}
-
+	log.Println("CReate product handlers")
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
+		log.Println(fmt.Errorf("Handler CreateProduct ошибка чтения данных: %w", err))
 		resp.ErrorResponse(0, "")
 		resp.Write(rw)
 		return
@@ -25,6 +28,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(data, &req)
 
 	if err != nil {
+		log.Println(fmt.Errorf("Handlers create product ошибка декодирования json: %w", err))
 		resp.ErrorResponse(http.StatusBadRequest, "Ой что-то сломалось")
 		resp.Write(rw)
 		return
@@ -36,6 +40,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 
 func ReadProduct(rw http.ResponseWriter, r *http.Request) {
 	resp := service.ResponseReadProduct{}
+	log.Println("REad product handlers")
 	vars := mux.Vars(r)
 	srtID := vars["id"]
 	id, err := strconv.Atoi(srtID)

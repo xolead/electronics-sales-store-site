@@ -2,6 +2,8 @@ package cloudstorage
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -48,7 +50,7 @@ func LoadCfg() S3StorageConfig {
 }
 
 func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
-
+	log.Println("S3S: ", cfg)
 	clientCfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithRegion(cfg.Region),
@@ -58,7 +60,7 @@ func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewS3S ошибка создание clientCfg: %w", err)
 	}
 
 	clientS3S := s3.NewFromConfig(clientCfg, func(o *s3.Options) {
@@ -89,7 +91,7 @@ func (s3s *s3Storage) UploadURL(filename string) (models.S3SImage, error) {
 	}, s3.WithPresignExpires(expires))
 
 	if err != nil {
-		return image, err
+		return image, fmt.Errorf("UploadURL ошибка созданяи предподписаного url: %w", err)
 	}
 
 	image.URL = presignResult.URL
@@ -109,12 +111,12 @@ func (s3s *s3Storage) DownloadURL(key string) (models.S3SImage, error) {
 	presignResult, err := presignClient.PresignGetObject(
 		context.TODO(), &s3.GetObjectInput{
 			Bucket: aws.String(s3s.bucket),
-			Key:    aws.String(key)},
+			Key:    aws.String(s3s.folder + "/" + key)},
 		s3.WithPresignExpires(expires),
 	)
 
 	if err != nil {
-		return image, err
+		return image, fmt.Errorf("DownloadURL ошибка создания предподписанного url: %w", err)
 	}
 
 	image.URL = presignResult.URL
@@ -131,12 +133,12 @@ func (s3s *s3Storage) DeleteURL(key string) (models.S3SImage, error) {
 	presignResult, err := presignClient.PresignDeleteObject(
 		context.TODO(), &s3.DeleteObjectInput{
 			Bucket: aws.String(s3s.bucket),
-			Key:    aws.String(key)},
+			Key:    aws.String(s3s.folder + "/" + key)},
 		s3.WithPresignExpires(15*time.Minute),
 	)
 
 	if err != nil {
-		return image, err
+		return image, fmt.Errorf("DeleteURL ошибка создания предподписаного url: %w", err)
 	}
 
 	image.URL = presignResult.URL

@@ -45,6 +45,7 @@ type PostgreSQLConfig struct {
 func LoadPSQLConfig() PostgreSQLConfig {
 	port, err := strconv.Atoi(os.Getenv("port"))
 	if err != nil {
+		fmt.Println(port)
 		log.Fatal(err)
 	}
 	return PostgreSQLConfig{
@@ -62,7 +63,7 @@ func (postgres *postgreSQL) Close() {
 }
 
 func NewPostgreSQL(config PostgreSQLConfig) (DataBase, error) {
-
+	log.Println("Post cfg: ", config)
 	connStr := fmt.Sprintf(
 		"postgres://%v:%v@%v:%v/%v?sslmode=%s",
 		config.User,
@@ -75,11 +76,11 @@ func NewPostgreSQL(config PostgreSQLConfig) (DataBase, error) {
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Ошибка соединения с базой данных: %w", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Ошибка ping базы данных: %w", err)
 	}
 
 	postgres := &postgreSQL{db}
@@ -90,12 +91,12 @@ func NewPostgreSQL(config PostgreSQLConfig) (DataBase, error) {
 func (postgres *postgreSQL) RunMigrations(path string) error {
 	driver, err := postgre.WithInstance(postgres.DB, &postgre.Config{})
 	if err != nil {
-		return err
+		return fmt.Errorf("Оишбка в создании драйвера для миграций: %w", err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("Ошибка в Getwd, RunMigrations: %w", err)
 	}
 
 	if path == "" {
@@ -107,27 +108,27 @@ func (postgres *postgreSQL) RunMigrations(path string) error {
 		"postgres", driver,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("Ошибка миграции NewWithDatabaseInstance: %w", err)
 	}
 
 	version, dirty, err := m.Version()
 	if err != nil && err != migrate.ErrNilVersion {
-		return err
+		return fmt.Errorf("Ошибка в версии миграции, dirty: %w", err)
 	}
 
 	if dirty {
 		if err := m.Force(int(version)); err != nil {
-			return err
+			return fmt.Errorf("Невозможность исправить dirty миграции: %w", err)
 		}
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		if dirtyErr, ok := err.(migrate.ErrDirty); ok {
 			if err := m.Force(int(dirtyErr.Version)); err != nil {
-				return err
+				return fmt.Errorf("Dirty миграций: %w", err)
 			}
 			if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-				return err
+				return fmt.Errorf("Невозможность поднять миграцию: %w", err)
 			}
 		}
 		return err
@@ -141,7 +142,7 @@ func (postgres *postgreSQL) CreateUser(login, password string) error {
 											VALUES($1, $2);`
 	id, err := postgres.getUserID(login)
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateUser ошибка в getUserID: %w", err)
 	}
 
 	if id != -1 {
@@ -150,12 +151,12 @@ func (postgres *postgreSQL) CreateUser(login, password string) error {
 
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("Ошибка генерации хэша пароля: %w", err)
 	}
 
 	_, err = postgres.Exec(createUserQuery, login, hashPassword)
 	if err != nil {
-		return err
+		return fmt.Errorf("Ошибка создани пользователя Exec: %w", err)
 	}
 
 	return nil
@@ -165,7 +166,7 @@ func (postgres *postgreSQL) getUserID(login string) (int, error) {
 	id := -1
 	getUserQuery := `SELECT id FROM users WHERE login=$1`
 	if err := postgres.QueryRow(getUserQuery, login).Scan(&id); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("getUserID ошибка queryRow: %w", err)
 	}
 	return id, nil
 }
@@ -190,7 +191,7 @@ func (postgres *postgreSQL) CreateProduct(pr models.Product) (int, error) {
 	                VALUES($1, $2, $3, $4) RETURNING id;`
 	id := -1
 	if err := postgres.QueryRow(createQueryProduct, pr.Name, pr.Description, pr.Parameters, pr.Count).Scan(&id); err != nil {
-		return -1, err
+		return -1, fmt.Errorf("CreateProduct ошибка QueryRow: %w", err)
 	}
 	createQueryImage := `INSERT INTO product_image
 	                     (product_id, name, key)
@@ -201,7 +202,7 @@ func (postgres *postgreSQL) CreateProduct(pr models.Product) (int, error) {
 		if err != nil {
 			_, err = postgres.Exec(createQueryImage, id, image.Name, image.Key)
 			if err != nil {
-				return -1, err
+				return -1, fmt.Errorf("CreateProduct ошибка добавления изображений: %w", err)
 			}
 		}
 	}
@@ -216,7 +217,7 @@ func (postgres *postgreSQL) ChangeCountProduct(id, countChange int) error {
 		return nil
 	}
 	if _, err := postgres.Exec(updateQueryCount, countChange, id); err != nil {
-		return err
+		return fmt.Errorf("UpdateProduct ошибка exec: %w", err)
 	}
 
 	return nil
@@ -230,26 +231,26 @@ func (postgres *postgreSQL) DeleteProduct(id int) ([]string, error) {
 
 	rows, err := postgres.Query(selectQuery, id)
 	if err != nil {
-		return keys, err
+		return keys, fmt.Errorf("DeleteProduct ошибка query: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		key := ""
 		if err = rows.Scan(&key); err != nil {
-			return keys, err
+			return keys, fmt.Errorf("DeleteProduct ошибка scan product: %w", err)
 		}
 		keys = append(keys, key)
 	}
 
 	deleteQueryImage := `DELETE FROM product_image WHERE product_id=$1`
 	if _, err := postgres.Exec(deleteQueryImage, id); err != nil {
-		return keys, err
+		return keys, fmt.Errorf("DeleteProduct ошибка exec удаления image: %w", err)
 	}
 
 	deleteQueryProduct := `DELETE FROM product WHERE id=$1`
 	if _, err := postgres.Exec(deleteQueryProduct, id); err != nil {
-		return keys, err
+		return keys, fmt.Errorf("DeleteProduct ошибка exec удаления product: %w", err)
 	}
 
 	return keys, nil
@@ -260,21 +261,21 @@ func (postgres *postgreSQL) ReadProduct(id int) (models.Product, error) {
 	pr := models.Product{}
 
 	if err := postgres.QueryRow(selectQueryProduct, id).Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Parameters, &pr.Count); err != nil {
-		return pr, err
+		return pr, fmt.Errorf("ReadProduct ошибка queryrow product: %w", err)
 	}
 
 	selectQueryImages := `SELECT id, product_id, name, key FROM product_image WHERE product_id=$1`
 
 	rows, err := postgres.Query(selectQueryImages, id)
 	if err != nil {
-		return pr, err
+		return pr, fmt.Errorf("ReadProduct ошибка query image: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		image := models.ProductImage{}
 		if err = rows.Scan(&image.ID, &image.ProductID, &image.Name, &image.Key); err != nil {
-			return pr, err
+			return pr, fmt.Errorf("ReadProduct ошибка scan image: %w", err)
 		}
 
 		pr.Images = append(pr.Images, image)
@@ -289,25 +290,25 @@ func (postgres *postgreSQL) ReadListProduct() ([]models.Product, error) {
 
 	rows, err := postgres.Query(selectQueryProduct)
 	if err != nil {
-		return pr, err
+		return pr, fmt.Errorf("ReadListProduct ошибка Query product: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		product := models.Product{}
 		if err = rows.Scan(&product.ID, &product.Name, &product.Description, &product.Parameters, &product.Count); err != nil {
-			return pr, err
+			return pr, fmt.Errorf("ReadListProduct ошибка scan product: %w", err)
 		}
 		selectQueryImages := `SELECT id, product_id, name, key FROM product_image WHERE product_id=$1`
 
 		rowsImages, err := postgres.Query(selectQueryImages, product.ID)
 		if err != nil {
-			return pr, err
+			return pr, fmt.Errorf("ReadListProduct ошибка query image: %w", err)
 		}
 		defer rowsImages.Close()
 		for rowsImages.Next() {
 			image := models.ProductImage{}
 			if err = rowsImages.Scan(&image.ID, &image.ProductID, &image.Name, &image.Key); err != nil {
-				return pr, err
+				return pr, fmt.Errorf("ReadListProduct ошибка scan image: %w", err)
 			}
 			product.Images = append(product.Images, image)
 		}

@@ -2,6 +2,8 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 
 	cloudstorage "electronic/pkg/cloud_storage"
@@ -97,15 +99,18 @@ func (resp *Response) StatusCreated() {
 
 func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 	resp := ResponseCreateProduct{}
+	log.Println("===================")
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -120,6 +125,7 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 	for i, name := range product.Images {
 		image, err := s3s.UploadURL(name)
 		if err != nil {
+			log.Println(err)
 			resp.ErrorResponse(0, "")
 			return resp
 		}
@@ -129,6 +135,7 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 
 	_, err = psql.CreateProduct(productDB)
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -146,24 +153,28 @@ func ReadProduct(req RequestReadProduct) ResponseReadProduct {
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	product, err = psql.ReadProduct(req.ID)
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	resp.Product, err = createDownloadURLs(product, s3s)
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -187,7 +198,7 @@ func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage)
 
 		image, err := s3s.DownloadURL(image.Key)
 		if err != nil {
-			return product, err
+			return product, fmt.Errorf("createDownloadURLs ошибка создания url: %w", err)
 		}
 
 		URLs = append(URLs, image.FileID)
@@ -202,18 +213,21 @@ func ReadAllProduct() ResponseReadAllProduct {
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	products, err := psql.ReadListProduct()
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -221,6 +235,7 @@ func ReadAllProduct() ResponseReadAllProduct {
 	for _, product := range products {
 		tempProduct, err := createDownloadURLs(product, s3s)
 		if err != nil {
+			log.Println(err)
 			resp.ErrorResponse(0, "")
 			return resp
 		}
@@ -236,12 +251,14 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	err = psql.ChangeCountProduct(req.ID, req.Count)
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -255,12 +272,14 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
+		log.Println(err)
 		resp.ErrorResponse(0, "")
 		return resp
 	}
@@ -269,6 +288,7 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 	for _, key := range keys {
 		image, err := s3s.DeleteURL(key)
 		if err != nil {
+			log.Println(err)
 			resp.ErrorResponse(0, "")
 			return resp
 		}
@@ -279,6 +299,7 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 
 		re, err := client.Do(r)
 		if err != nil {
+			log.Println(err)
 			resp.ErrorResponse(0, "")
 			return resp
 		}
@@ -286,6 +307,7 @@ func DeleteProduct(req RequestDeleteProduct) Response {
 		defer re.Body.Close()
 
 		if re.StatusCode != http.StatusNoContent {
+			log.Println(err)
 			resp.ErrorResponse(0, "")
 			return resp
 		}
