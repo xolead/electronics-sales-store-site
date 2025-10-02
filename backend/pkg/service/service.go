@@ -30,10 +30,6 @@ type ResponseCreateProduct struct {
 	URLs []string `json:"urls"`
 }
 
-type RequestCreateProduct struct {
-	Product
-}
-
 type RequestReadProduct struct {
 	ID int
 }
@@ -97,9 +93,8 @@ func (resp *Response) StatusCreated() {
 	resp.Message = "Объект успешно создан"
 }
 
-func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
+func CreateProduct(product Product) ResponseCreateProduct {
 	resp := ResponseCreateProduct{}
-	log.Println("===================")
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
@@ -114,14 +109,15 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 		resp.ErrorResponse(0, "")
 		return resp
 	}
+
 	productDB := models.Product{
 		Description: product.Description,
 		Name:        product.Name,
 		Count:       product.Count,
 		Parameters:  product.Parameters,
+		Images:      make([]models.ProductImage, len(product.Images)),
 	}
-	urls := make([]string, 0, len(product.Images))
-
+	urls := make([]string, len(product.Images))
 	for i, name := range product.Images {
 		image, err := s3s.UploadURL(name)
 		if err != nil {
@@ -131,6 +127,7 @@ func CreateProduct(product RequestCreateProduct) ResponseCreateProduct {
 		}
 		urls = append(urls, image.URL)
 		productDB.Images[i].Key = image.FileID
+		productDB.Images[i].Name = name
 	}
 
 	_, err = psql.CreateProduct(productDB)
