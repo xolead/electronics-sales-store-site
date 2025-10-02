@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	postgre "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 
@@ -85,6 +86,11 @@ func NewPostgreSQL(config PostgreSQLConfig) (DataBase, error) {
 
 	postgres := &postgreSQL{db}
 
+	err = postgres.RunMigrations("")
+	if err != nil {
+		return nil, fmt.Errorf("NewPostgreSQL ошибка миграции: %w", err)
+	}
+
 	return postgres, nil
 }
 
@@ -133,6 +139,7 @@ func (postgres *postgreSQL) RunMigrations(path string) error {
 		}
 		return err
 	}
+	log.Println("Миграция прошла успешно")
 	return nil
 }
 

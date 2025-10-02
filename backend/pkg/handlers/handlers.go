@@ -15,7 +15,6 @@ import (
 
 func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	resp := service.ResponseCreateProduct{}
-	log.Println("CReate product handlers")
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler CreateProduct ошибка чтения данных: %w", err))
@@ -24,9 +23,9 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := service.RequestCreateProduct{}
+	req := service.Product{}
 	err = json.Unmarshal(data, &req)
-
+	json.NewEncoder(rw).Encode(req)
 	if err != nil {
 		log.Println(fmt.Errorf("Handlers create product ошибка декодирования json: %w", err))
 		resp.ErrorResponse(http.StatusBadRequest, "Ой что-то сломалось")
