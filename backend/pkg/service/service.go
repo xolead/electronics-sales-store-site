@@ -61,17 +61,14 @@ func (resp *ResponseReadProduct) Write(rw http.ResponseWriter) {
 	json.NewEncoder(rw).Encode(resp)
 }
 
-func (resp *Response) ErrorResponse(code int, message string) {
-	if code != 0 {
-		resp.Code = code
-	} else {
-		resp.Code = http.StatusInternalServerError
-	}
-	if message != "" {
-		resp.Message = message
-	} else {
-		resp.Message = "Произошла непредвиденная ошибка"
-	}
+func (resp *Response) Error(code int, message string) {
+	resp.Code = code
+	resp.Message = message
+}
+
+func (resp *Response) InternalError() {
+	resp.Code = http.StatusInternalServerError
+	resp.Message = "Внутренняя ошибка сервера"
 }
 
 func (resp *Response) StatusOK() {
@@ -80,7 +77,6 @@ func (resp *Response) StatusOK() {
 }
 
 func (resp *Response) StatusCreated() {
-
 	resp.Code = http.StatusCreated
 	resp.Message = "Объект успешно создан"
 }
@@ -91,14 +87,14 @@ func CreateProduct(product Product) ResponseCreateProduct {
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
@@ -114,7 +110,7 @@ func CreateProduct(product Product) ResponseCreateProduct {
 		image, err := s3s.UploadURL(name)
 		if err != nil {
 			log.Println(err)
-			resp.ErrorResponse(0, "")
+			resp.InternalError()
 			return resp
 		}
 		urls = append(urls, image.URL)
@@ -125,7 +121,7 @@ func CreateProduct(product Product) ResponseCreateProduct {
 	_, err = psql.CreateProduct(productDB)
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
@@ -143,28 +139,28 @@ func ReadProduct(id int) ResponseReadProduct {
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	product, err = psql.ReadProduct(id)
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	resp.Product, err = createDownloadURLs(product, s3s)
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 	resp.StatusOK()
@@ -203,21 +199,21 @@ func ReadAllProduct() ResponseReadAllProduct {
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	products, err := psql.ReadListProduct()
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
@@ -225,7 +221,7 @@ func ReadAllProduct() ResponseReadAllProduct {
 		tempProduct, err := createDownloadURLs(product, s3s)
 		if err != nil {
 			log.Println(err)
-			resp.ErrorResponse(0, "")
+			resp.InternalError()
 			return resp
 		}
 		resp.Products = append(resp.Products, tempProduct)
@@ -241,14 +237,14 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	err = psql.ChangeCountProduct(req.ID, req.Count)
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
@@ -262,14 +258,14 @@ func DeleteProduct(id int) Response {
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
 	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
 	if err != nil {
 		log.Println(err)
-		resp.ErrorResponse(0, "")
+		resp.InternalError()
 		return resp
 	}
 
@@ -278,7 +274,7 @@ func DeleteProduct(id int) Response {
 		image, err := s3s.DeleteURL(key)
 		if err != nil {
 			log.Println(err)
-			resp.ErrorResponse(0, "")
+			resp.InternalError()
 			return resp
 		}
 
@@ -289,7 +285,7 @@ func DeleteProduct(id int) Response {
 		re, err := client.Do(r)
 		if err != nil {
 			log.Println(err)
-			resp.ErrorResponse(0, "")
+			resp.InternalError()
 			return resp
 		}
 
@@ -297,7 +293,7 @@ func DeleteProduct(id int) Response {
 
 		if re.StatusCode != http.StatusNoContent {
 			log.Println(err)
-			resp.ErrorResponse(0, "")
+			resp.InternalError()
 			return resp
 		}
 
