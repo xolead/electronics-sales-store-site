@@ -165,7 +165,7 @@ func DeleteAndRead(t *testing.T, db dbwork.DataBase) {
 		id = products[0].ID
 	}
 
-	err = db.DeleteProduct(id)
+	_, err = db.DeleteProduct(id)
 	assert.NoError(t, err)
 
 	products, err = db.ReadListProduct()
