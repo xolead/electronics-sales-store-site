@@ -2,6 +2,12 @@ import './App.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Create from './pages/Create';
+import axios from 'axios';
+
+// Настройка axios
+const api = axios.create({
+});
+
 
 const App = () => {
   return (
@@ -17,57 +23,28 @@ const App = () => {
 // Функция для получения всех товаров
 const getAll = async () => {
   try {
-    const response = await fetch('http://localhost:8080/products', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    console.log('🔄 Запрашиваем товары...');
+    const response = await axios.get('/product');
+    console.log('📦 Полный ответ:', response.data);
+    
+    // Извлекаем товары из структуры ResponseReadAllProduct
+    if (response.data && response.data.Products) {
+      console.log('✅ Товары найдены:', response.data.Products);
+      return response.data.Products;
+    } else if (response.data && Array.isArray(response.data)) {
+      console.log('✅ Товары (массив):', response.data);
+      return response.data;
+    } else {
+      console.warn('⚠️ Товары не найдены в ответе');
+      return [];
     }
-
-    const data = await response.json();
-    return data;
     
   } catch (error) {
-    console.error('Ошибка при получении товаров:', error);
-    throw error;
+    console.error('❌ Ошибка при получении товаров:', error);
+    return [];
   }
 };
 
-// Альтернативный вариант с обработкой разных статусов
-const getAllWithDetailedErrorHandling = async () => {
-  try {
-    const response = await fetch('http://localhost:8080/products');
-
-    if (response.status === 404) {
-      throw new Error('Сервер не найден (404)');
-    }
-
-    if (response.status === 500) {
-      throw new Error('Ошибка сервера (500)');
-    }
-
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-
-  } catch (error) {
-    console.error('Ошибка при загрузке товаров:', error);
-    
-    // Можно показать уведомление пользователю
-    if (error.message.includes('Failed to fetch')) {
-      alert('Не удалось подключиться к серверу. Проверьте, запущен ли бэкенд.');
-    }
-    
-    throw error;
-  }
-};
 
 function HomePage() {
   return (

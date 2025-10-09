@@ -1,6 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './Create.css';
+import axios from 'axios';
+
+// Настройка axios
+const api = axios.create({
+});
+
 
 
 const Create = () => {
@@ -15,35 +21,23 @@ const Create = () => {
   const fileInputRef = useRef(null);
 
 
- // Функция создания продукта
- const createProduct = async (productData, images) => {
+// Функция создания продукта (только JSON)
+const createProduct = async (productData) => {
   try {
-    // Формируем FormData для отправки файлов
-    const formData = new FormData();
-    
-    // Добавляем текстовые данные
-    formData.append('name', productData.name);
-    formData.append('price', productData.price);
-    formData.append('category', productData.category);
-    formData.append('description', productData.description);
-    
-    // Добавляем изображения
-    images.forEach((image, index) => {
-      formData.append('images', image.file);
+    const response = await axios.post('/products', {
+      name: productData.name,
+      price: Number(productData.price),
+      category: productData.category,
+      description: productData.description,
+      parameters: productData.parameters || '',
+      count: Number(productData.count) || 1
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    const response = await fetch('http://localhost:8080/products', {
-      method: 'POST',
-      body: formData, // Не нужно указывать Content-Type для FormData - браузер сам установит
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Ошибка при создании товара');
-    }
-
-    const result = await response.json();
-    return result;
+    return response.data;
 
   } catch (error) {
     console.error('Ошибка при создании товара:', error);
