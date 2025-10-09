@@ -34,7 +34,7 @@ const createProduct = async (productData) => {
     }, {
       headers: {
         'Content-Type': 'application/json',
-      },
+      }, 
     });
 
     return response.data;
