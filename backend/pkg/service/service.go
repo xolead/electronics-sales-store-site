@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	cloudstorage "electronic/pkg/cloud_storage"
+	"electronic/pkg/connectionpool"
 	"electronic/pkg/dbwork"
 	"electronic/pkg/models"
 )
@@ -22,6 +23,7 @@ type Product struct {
 	Description string   `json:"description"`
 	Parameters  string   `json:"parameters"`
 	Count       int      `json:"count"`
+	Price       int      `json:"price"`
 	Images      []string `json:"images"`
 }
 
@@ -84,25 +86,16 @@ func (resp *Response) StatusCreated() {
 func CreateProduct(product Product) ResponseCreateProduct {
 	resp := ResponseCreateProduct{}
 
-	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
-
-	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
+	pool := connectionpool.NewConnectionPool()
+	s3s := pool.GetS3Storage()
+	dataBase := pool.GetDataBase()
 
 	productDB := models.Product{
 		Description: product.Description,
 		Name:        product.Name,
 		Count:       product.Count,
 		Parameters:  product.Parameters,
+		Price:       product.Price,
 		Images:      make([]models.ProductImage, len(product.Images)),
 	}
 	urls := make([]string, len(product.Images))
@@ -118,7 +111,7 @@ func CreateProduct(product Product) ResponseCreateProduct {
 		productDB.Images[i].Name = name
 	}
 
-	_, err = psql.CreateProduct(productDB)
+	_, err := dataBase.CreateProduct(productDB)
 	if err != nil {
 		log.Println(err)
 		resp.InternalError()
@@ -136,26 +129,17 @@ func ReadProduct(id int) ResponseReadProduct {
 
 	product := models.Product{}
 
-	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
+	pool := connectionpool.NewConnectionPool()
+	dataBase := pool.GetDataBase()
+
+	product, err := dataBase.ReadProduct(id)
 	if err != nil {
 		log.Println(err)
 		resp.InternalError()
 		return resp
 	}
 
-	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
-
-	product, err = psql.ReadProduct(id)
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
+	s3s := pool.GetS3Storage()
 
 	resp.Product, err = createDownloadURLs(product, s3s)
 	if err != nil {
@@ -176,6 +160,7 @@ func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage)
 		Description: productDB.Description,
 		Parameters:  productDB.Parameters,
 		Count:       productDB.Count,
+		Price:       productDB.Price,
 	}
 
 	URLs := make([]string, 0, len(productDB.Images))
@@ -196,26 +181,18 @@ func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage)
 func ReadAllProduct() ResponseReadAllProduct {
 	resp := ResponseReadAllProduct{}
 
-	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
+	pool := connectionpool.NewConnectionPool()
+	s3s := pool.GetS3Storage()
+	dataBase := pool.GetDataBase()
+
+	products, err := dataBase.ReadListProduct()
 	if err != nil {
 		log.Println(err)
 		resp.InternalError()
 		return resp
 	}
 
-	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
-
-	products, err := psql.ReadListProduct()
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
+	resp.Products = make([]Product, 0, len(products))
 
 	for _, product := range products {
 		tempProduct, err := createDownloadURLs(product, s3s)
@@ -255,21 +232,17 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 func DeleteProduct(id int) Response {
 	resp := Response{}
 
-	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
+	pool := connectionpool.NewConnectionPool()
+	dataBase := pool.GetDataBase()
+	s3s := pool.GetS3Storage()
+
+	keys, err := dataBase.DeleteProduct(id)
 	if err != nil {
 		log.Println(err)
 		resp.InternalError()
 		return resp
 	}
 
-	s3s, err := cloudstorage.NewS3S(cloudstorage.LoadCfg())
-	if err != nil {
-		log.Println(err)
-		resp.InternalError()
-		return resp
-	}
-
-	keys, err := psql.DeleteProduct(id)
 	for _, key := range keys {
 		image, err := s3s.DeleteURL(key)
 		if err != nil {
