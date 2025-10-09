@@ -3,7 +3,8 @@ CREATE TABLE product(
   name TEXT,
   description TEXT,
   parameters TEXT,
-  count INTEGER CHECK (count >= 0) NOT NULL
+  count INTEGER CHECK (count >= 0) NOT NULL,
+  price INTEGER CHECK (count >= 0) NOT NULL
 );
 
 CREATE TABLE product_image(
@@ -12,4 +13,3 @@ CREATE TABLE product_image(
   name VARCHAR(255) NOT NULL,
   key VARCHAR(500) NOT NULL UNIQUE
 );
-
