@@ -3,12 +3,9 @@ services:
     image: postgres:15
     container_name: db
     environment:
-      - user
-      - password
-      - host
-      - port
-      - dbname
-      - sslmode
+      POSTGRES_USER: postgres          
+      POSTGRES_PASSWORD: postgres       
+      POSTGRES_DB: blog
     ports:
       - "5434:5432"
     healthcheck:

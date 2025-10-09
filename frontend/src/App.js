@@ -9,6 +9,10 @@ const api = axios.create({
 });
 
 
+const DeleteProduct = async (id) => {
+  await axios.delete('/product/' + id)
+}
+
 const App = () => {
   return (
     <Router>
@@ -83,7 +87,7 @@ function ShoppingList() {
   useEffect(() => {
     loadProducts();
   }, []);
-
+ 
   const loadProducts = async () => {
     try {
       setLoading(true);

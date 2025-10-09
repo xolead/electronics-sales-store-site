@@ -24,7 +24,7 @@ const Create = () => {
 // Функция создания продукта (только JSON)
 const createProduct = async (productData) => {
   try {
-    const response = await axios.post('/products', {
+    const response = await axios.post('/product', {
       name: productData.name,
       price: Number(productData.price),
       category: productData.category,
@@ -129,8 +129,10 @@ const createProduct = async (productData) => {
     // Здесь будет логика сохранения товара
     console.log('Данные товара:', {
       ...productData,
-      images: previewImages
+      images: previewImages,
     });
+
+    createProduct(productData)
 
     alert('Товар успешно добавлен!');
     
