@@ -194,10 +194,10 @@ func (postgres *postgreSQL) VerifyPassword(login, password string) (bool, error)
 
 func (postgres *postgreSQL) CreateProduct(pr models.Product) (int, error) {
 	createQueryProduct := `INSERT INTO product
-	                (name, description, parameters, count)
-	                VALUES($1, $2, $3, $4) RETURNING id;`
+	                (name, description, parameters, count, price)
+	                VALUES($1, $2, $3, $4, $5) RETURNING id;`
 	id := -1
-	if err := postgres.QueryRow(createQueryProduct, pr.Name, pr.Description, pr.Parameters, pr.Count).Scan(&id); err != nil {
+	if err := postgres.QueryRow(createQueryProduct, pr.Name, pr.Description, pr.Parameters, pr.Count, pr.Price).Scan(&id); err != nil {
 		return -1, fmt.Errorf("CreateProduct ошибка QueryRow: %w", err)
 	}
 	createQueryImage := `INSERT INTO product_image
@@ -264,10 +264,10 @@ func (postgres *postgreSQL) DeleteProduct(id int) ([]string, error) {
 }
 
 func (postgres *postgreSQL) ReadProduct(id int) (models.Product, error) {
-	selectQueryProduct := `SELECT id, name, description, parameters, count FROM product WHERE id=$1`
+	selectQueryProduct := `SELECT id, name, description, parameters, count, price FROM product WHERE id=$1`
 	pr := models.Product{}
 
-	if err := postgres.QueryRow(selectQueryProduct, id).Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Parameters, &pr.Count); err != nil {
+	if err := postgres.QueryRow(selectQueryProduct, id).Scan(&pr.ID, &pr.Name, &pr.Description, &pr.Parameters, &pr.Count, &pr.Price); err != nil {
 		return pr, fmt.Errorf("ReadProduct ошибка queryrow product: %w", err)
 	}
 
@@ -292,7 +292,7 @@ func (postgres *postgreSQL) ReadProduct(id int) (models.Product, error) {
 }
 
 func (postgres *postgreSQL) ReadListProduct() ([]models.Product, error) {
-	selectQueryProduct := `SELECT id, name, description, parameters, count FROM product`
+	selectQueryProduct := `SELECT id, name, description, parameters, count, price FROM product`
 	pr := make([]models.Product, 0)
 
 	rows, err := postgres.Query(selectQueryProduct)
@@ -302,7 +302,7 @@ func (postgres *postgreSQL) ReadListProduct() ([]models.Product, error) {
 	defer rows.Close()
 	for rows.Next() {
 		product := models.Product{}
-		if err = rows.Scan(&product.ID, &product.Name, &product.Description, &product.Parameters, &product.Count); err != nil {
+		if err = rows.Scan(&product.ID, &product.Name, &product.Description, &product.Parameters, &product.Count, &product.Price); err != nil {
 			return pr, fmt.Errorf("ReadListProduct ошибка scan product: %w", err)
 		}
 		selectQueryImages := `SELECT id, product_id, name, key FROM product_image WHERE product_id=$1`

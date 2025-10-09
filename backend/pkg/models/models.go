@@ -7,6 +7,7 @@ type Product struct {
 	Parameters  string         `json:"parameters"`
 	Count       int            `json:"count"`
 	Images      []ProductImage `json:"images"`
+	Price       int            `json:"price"`
 }
 
 type ProductImage struct {

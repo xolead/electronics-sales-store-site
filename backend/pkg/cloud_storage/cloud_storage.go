@@ -38,7 +38,7 @@ type S3StorageConfig struct {
 	Folder    string
 }
 
-func LoadCfg() S3StorageConfig {
+func LoadConfig() S3StorageConfig {
 	return S3StorageConfig{
 		AccessKey: os.Getenv("access_key"),
 		SecretKey: os.Getenv("secret_key"),

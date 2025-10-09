@@ -18,7 +18,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler CreateProduct ошибка чтения данных: %w", err))
-		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения данных")
+		resp.Error(http.StatusBadRequest, "Ошибка чтения данных")
 		resp.Write(rw)
 		return
 	}
@@ -27,7 +27,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(data, &req)
 	if err != nil {
 		log.Println(fmt.Errorf("Handlers create product ошибка декодирования json: %w", err))
-		resp.ErrorResponse(http.StatusBadRequest, "Ой что-то сломалось")
+		resp.Error(http.StatusBadRequest, "Ошибка чтения json")
 		resp.Write(rw)
 		return
 	}
@@ -42,13 +42,13 @@ func ChangeCountProduct(rw http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler ChangeCountProduct: %w", err))
-		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения данных")
+		resp.Error(http.StatusBadRequest, "Ошибка чтения данных")
 		resp.Write(rw)
 		return
 	}
 	req := service.RequestChangeCount{}
 	if err = json.Unmarshal(data, &req); err != nil {
-		resp.ErrorResponse(http.StatusBadRequest, "Ошибка чтения json")
+		resp.Error(http.StatusBadRequest, "Ошибка чтения json")
 		resp.Write(rw)
 		return
 	}
@@ -63,7 +63,7 @@ func ReadProduct(rw http.ResponseWriter, r *http.Request) {
 	strID := vars["id"]
 	id, err := strconv.Atoi(strID)
 	if err != nil {
-		resp.ErrorResponse(http.StatusBadRequest, "Не найден ID в запросе")
+		resp.Error(http.StatusBadRequest, "Не найден ID в запросе")
 		resp.Write(rw)
 		return
 	}
@@ -83,11 +83,17 @@ func DeleteProduct(rw http.ResponseWriter, r *http.Request) {
 	strID := vars["id"]
 	id, err := strconv.Atoi(strID)
 	if err != nil {
-		resp.ErrorResponse(http.StatusBadRequest, "Не найден ID в запросе")
+		resp.Error(http.StatusBadRequest, "Не найден ID в запросе")
 		resp.Write(rw)
 		return
 	}
 
 	resp = service.DeleteProduct(id)
+	resp.Write(rw)
+}
+
+func HealthCheck(rw http.ResponseWriter, r *http.Request) {
+	resp := service.Response{}
+	resp.StatusOK()
 	resp.Write(rw)
 }
