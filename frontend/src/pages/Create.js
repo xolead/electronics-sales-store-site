@@ -27,9 +27,8 @@ const createProduct = async (productData) => {
     const response = await axios.post('/product', {
       name: productData.name,
       price: Number(productData.price),
-      category: productData.category,
       description: productData.description,
-      parameters: productData.parameters || '',
+      parameters: productData.category || '',
       count: Number(productData.count) || 1
     }, {
       headers: {

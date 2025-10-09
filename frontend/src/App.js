@@ -183,8 +183,9 @@ function ShoppingList() {
                 }}
               />
               <div className="product-details">
-                <span className="category">{product.category}</span>
+                <span className="category">{product.parameters}</span>
                 <h3>{product.name}</h3>
+                <span className="category">{product.description}</span>
                 <div className="price-section">
                   <span className="price">{product.price.toLocaleString()} ₽</span>
                   <button 
