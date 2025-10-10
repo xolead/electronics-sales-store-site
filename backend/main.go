@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	cloudstorage "electronic/pkg/cloud_storage"
 	"electronic/pkg/handlers"
 )
 
@@ -25,6 +26,16 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 func main() {
+	// Настройка CORS для S3 при каждом запуске
+	s3Config := cloudstorage.LoadConfig()
+
+	// Настраиваем CORS каждый раз при запуске
+	err := cloudstorage.SetupS3CORS(s3Config)
+	if err != nil {
+		log.Printf("⚠️ Failed to setup S3 CORS: %v", err)
+	} else {
+		log.Println("✅ S3 CORS configured on startup")
+	}
 
 	router := mux.NewRouter()
 	router.Use(CORS)

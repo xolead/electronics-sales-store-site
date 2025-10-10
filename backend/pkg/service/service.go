@@ -98,7 +98,7 @@ func CreateProduct(product Product) ResponseCreateProduct {
 		Price:       product.Price,
 		Images:      make([]models.ProductImage, len(product.Images)),
 	}
-	urls := make([]string, len(product.Images))
+	urls := make([]string, 0, len(product.Images))
 	for i, name := range product.Images {
 		image, err := s3s.UploadURL(name)
 		if err != nil {
