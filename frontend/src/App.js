@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Create from './pages/Create';
 import axios from 'axios';
 
-// Настройка axios
+
 const api = axios.create({
 });
 
@@ -13,6 +13,12 @@ const DeleteProduct = async (id) => {
   await axios.delete('/product/' + id)
 }
 
+// базовый URL S3
+const getFullImageUrl = (filename) => {
+  const url = `https://electronic.s3.regru.cloud/products/${filename}`;
+  console.log('Image URL:', url); 
+  return url;
+};
 const App = () => {
   return (
     <Router>
@@ -24,14 +30,13 @@ const App = () => {
   );
 }
 
-// Функция для получения всех товаров
+
 const getAll = async () => {
   try {
     console.log('🔄 Запрашиваем товары...');
     const response = await axios.get('/product');
     console.log('📦 Полный ответ:', response.data);
     
-    // Извлекаем товары из структуры ResponseReadAllProduct
     if (response.data && response.data.Products) {
       console.log('✅ Товары найдены:', response.data.Products);
       return response.data.Products;
@@ -88,6 +93,11 @@ function ShoppingList() {
     loadProducts();
   }, []);
  
+  // for (let i = 1; i < 15; i ++){
+  //   DeleteProduct(i)
+  // }
+  
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -134,7 +144,6 @@ function ShoppingList() {
     setSelectedProduct(null);
   };
 
-  // Функция для обновления списка товаров (можно вызвать после добавления нового товара)
   const refreshProducts = () => {
     loadProducts();
   };
@@ -174,13 +183,13 @@ function ShoppingList() {
           {products.map(product => (
             <div key={product.id} className="product-card">
               <img 
-                src={product.image} 
+                src={getFullImageUrl(product.images[0])} 
                 alt={product.name} 
                 className="product-image" 
-                onError={(e) => {
-                  // Запасное изображение если основное не загрузилось
-                  e.target.src = '/img/placeholder.jpg';
-                }}
+                // onError={(e) => {
+                //   // Запасное изображение если основное не загрузилось
+                //   e.target.src = '/img/placeholder.jpg';
+                // }}
               />
               <div className="product-details">
                 <span className="category">{product.parameters}</span>

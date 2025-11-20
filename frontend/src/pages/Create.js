@@ -3,12 +3,6 @@ import { Link } from 'react-router-dom';
 import './Create.css';
 import axios from 'axios';
 
-// Настройка axios
-const api = axios.create({
-});
-
-
-
 const Create = () => {
   const [productData, setProductData] = useState({
     name: '',
@@ -18,32 +12,55 @@ const Create = () => {
   });
   const [previewImages, setPreviewImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Функция создания продукта - получаем URLs для загрузки
+  const createProductAndGetUrls = async (productData, fileNames) => {
+    try {
+      const response = await axios.post('/product', {
+        name: productData.name,
+        price: Number(productData.price),
+        description: productData.description,
+        parameters: productData.category || '',
+        count: Number(productData.count) || 1,
+        images: fileNames // МАССИВ НАЗВАНИЙ КАРТИНОК
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }, 
+      });
 
-// Функция создания продукта (только JSON)
-const createProduct = async (productData) => {
-  try {
-    const response = await axios.post('/product', {
-      name: productData.name,
-      price: Number(productData.price),
-      description: productData.description,
-      parameters: productData.category || '',
-      count: Number(productData.count) || 1
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      }, 
-    });
+      return response.data; // { URLs: ["s3-url1", "s3-url2", ...] }
 
-    return response.data;
+    } catch (error) {
+      console.error('Ошибка при создании товара:', error);
+      throw error;
+    }
+  };
 
-  } catch (error) {
-    console.error('Ошибка при создании товара:', error);
-    throw error;
-  }
-};
+  // Функция загрузки файлов на S3
+  const uploadFilesToS3 = async (files, s3Urls) => {
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const file = files[i];
+        const s3Url = s3Urls[i];
 
+        // Загружаем файл на S3 используя полученный URL
+        await axios.put(s3Url, file, {
+          headers: {
+            'Content-Type': file.type,
+          },
+        });
+
+        console.log(`✅ Файл "${file.name}" загружен на S3`);
+
+      } catch (error) {
+        console.error(`Ошибка при загрузке файла ${files[i].name}:`, error);
+        throw new Error(`Не удалось загрузить файл: ${files[i].name}`);
+      }
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -66,6 +83,7 @@ const createProduct = async (productData) => {
             id: Date.now() + Math.random(),
             url: e.target.result,
             file: file,
+            fileName: file.name
           });
         };
         reader.readAsDataURL(file);
@@ -112,7 +130,7 @@ const createProduct = async (productData) => {
     setPreviewImages(prev => prev.filter(img => img.id !== id));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (previewImages.length === 0) {
@@ -125,24 +143,37 @@ const createProduct = async (productData) => {
       return;
     }
 
-    // Здесь будет логика сохранения товара
-    console.log('Данные товара:', {
-      ...productData,
-      images: previewImages,
-    });
+    setIsSubmitting(true);
 
-    createProduct(productData)
+    try {
+      const fileNames = previewImages.map(img => img.file.name);
+      const files = previewImages.map(img => img.file);
 
-    alert('Товар успешно добавлен!');
-    
-    // Очистка формы
-    setProductData({
-      name: '',
-      price: '',
-      category: '',
-      description: ''
-    });
-    setPreviewImages([]);
+      console.log('📤 Создаем товар и получаем URLs для загрузки...');
+
+      const response = await createProductAndGetUrls(productData, fileNames);
+      console.log('✅ Получены URLs для загрузки:', response.urls);
+
+      console.log('🔄 Загружаем файлы на S3...');
+      await uploadFilesToS3(files, response.urls);
+      console.log('✅ Все файлы загружены на S3');
+
+      alert('Товар успешно добавлен!');
+      
+      setProductData({
+        name: '',
+        price: '',
+        category: '',
+        description: ''
+      });
+      setPreviewImages([]);
+
+    } catch (error) {
+      console.error('❌ Ошибка при создании товара:', error);
+      alert(`Ошибка при создании товара: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
