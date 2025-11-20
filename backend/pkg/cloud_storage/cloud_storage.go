@@ -2,8 +2,10 @@ package cloudstorage
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -52,12 +54,23 @@ func LoadConfig() S3StorageConfig {
 
 func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
 	log.Println("S3S: ", cfg)
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, // Только для разработки!
+			},
+		},
+		Timeout: 30 * time.Second,
+	}
+
 	clientCfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithRegion(cfg.Region),
 		config.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, ""),
 		),
+		config.WithHTTPClient(httpClient),
 	)
 
 	if err != nil {
@@ -76,16 +89,26 @@ func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
 					AllowedHeaders: []string{"*"},
 					AllowedMethods: []string{"PUT", "POST", "GET", "DELETE", "HEAD"},
 					AllowedOrigins: []string{
-						"http://localhost:3000",
-						"https://localhost:3000",
-						"http://127.0.0.1:3000",
+						"*",
 					},
-					ExposeHeaders: []string{"ETag"},
+					ExposeHeaders: []string{
+						"ETag",
+						"x-amz-version-id",
+						"Content-Length",
+						"Content-Range",
+						"Access-Control-Allow-Origin",
+						"Access-Control-Allow-Methods"},
 					MaxAgeSeconds: aws.Int32(3000),
 				},
 			},
 		},
 	})
+
+	if err != nil {
+		log.Println("Ошибка настройки CORS S3: ", err)
+	} else {
+		log.Println("CORS S3 настроен успешно")
+	}
 
 	s3s := &s3Storage{
 		Client: clientS3S,
