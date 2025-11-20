@@ -183,8 +183,10 @@ const Create = () => {
   return (
     <div className="create-page">
       <header className="header">
-        <div className="header_box">
-          <img src="/img/cart.png" className="cart" alt="Cart" />
+        <div className='header_box'>
+          <Link to="/cart" className="cart-link">
+          <img src="/img/cart.png" className='cart' alt="Cart" />
+          </Link>
           <Link to="/" className="home-link">
             Главная
           </Link>
