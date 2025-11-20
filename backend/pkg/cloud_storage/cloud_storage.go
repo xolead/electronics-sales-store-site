@@ -68,6 +68,25 @@ func NewS3S(cfg S3StorageConfig) (CloudStorage, error) {
 		o.BaseEndpoint = aws.String(cfg.Endpoint)
 	})
 
+	_, err = clientS3S.PutBucketCors(context.TODO(), &s3.PutBucketCorsInput{
+		Bucket: aws.String(cfg.Bucket),
+		CORSConfiguration: &types.CORSConfiguration{
+			CORSRules: []types.CORSRule{
+				{
+					AllowedHeaders: []string{"*"},
+					AllowedMethods: []string{"PUT", "POST", "GET", "DELETE", "HEAD"},
+					AllowedOrigins: []string{
+						"http://localhost:3000",
+						"https://localhost:3000",
+						"http://127.0.0.1:3000",
+					},
+					ExposeHeaders: []string{"ETag"},
+					MaxAgeSeconds: aws.Int32(3000),
+				},
+			},
+		},
+	})
+
 	s3s := &s3Storage{
 		Client: clientS3S,
 		bucket: cfg.Bucket,
@@ -146,48 +165,4 @@ func (s3s *s3Storage) DeleteURL(key string) (models.S3SImage, error) {
 	image.URL = presignResult.URL
 	return image, nil
 
-}
-
-// SetupS3CORS настраивает CORS для S3 корзины
-func SetupS3CORS(cfg S3StorageConfig) error {
-	clientCfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion(cfg.Region),
-		config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, ""),
-		),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	client := s3.NewFromConfig(clientCfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(cfg.Endpoint)
-	})
-
-	_, err = client.PutBucketCors(context.TODO(), &s3.PutBucketCorsInput{
-		Bucket: aws.String(cfg.Bucket),
-		CORSConfiguration: &types.CORSConfiguration{
-			CORSRules: []types.CORSRule{
-				{
-					AllowedHeaders: []string{"*"},
-					AllowedMethods: []string{"PUT", "POST", "GET", "DELETE", "HEAD"},
-					AllowedOrigins: []string{
-						"http://localhost:3000",
-						"https://localhost:3000",
-						"http://127.0.0.1:3000",
-					},
-					ExposeHeaders: []string{"ETag"},
-					MaxAgeSeconds: aws.Int32(3000),
-				},
-			},
-		},
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to setup CORS: %w", err)
-	}
-
-	fmt.Printf("✅ CORS configured for bucket: %s\n", cfg.Bucket)
-	return nil
 }

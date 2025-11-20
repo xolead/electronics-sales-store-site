@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,79 +11,8 @@ import (
 	"electronic/pkg/models"
 )
 
-type Response struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type Product struct {
-	ID          int      `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Parameters  string   `json:"parameters"`
-	Count       int      `json:"count"`
-	Price       int      `json:"price"`
-	Images      []string `json:"images"`
-}
-
-type ResponseCreateProduct struct {
-	Response
-	URLs []string `json:"urls"`
-}
-
-type ResponseReadProduct struct {
-	Response
-	Product
-}
-
-type ResponseReadAllProduct struct {
-	Response
-	Products []Product
-}
-
-type RequestChangeCount struct {
-	ID    int
-	Count int
-}
-
-func (resp *Response) Write(rw http.ResponseWriter) {
-	json.NewEncoder(rw).Encode(resp)
-}
-
-func (resp *ResponseReadAllProduct) Write(rw http.ResponseWriter) {
-	json.NewEncoder(rw).Encode(resp)
-}
-
-func (resp *ResponseCreateProduct) Write(rw http.ResponseWriter) {
-	json.NewEncoder(rw).Encode(resp)
-}
-
-func (resp *ResponseReadProduct) Write(rw http.ResponseWriter) {
-	json.NewEncoder(rw).Encode(resp)
-}
-
-func (resp *Response) Error(code int, message string) {
-	resp.Code = code
-	resp.Message = message
-}
-
-func (resp *Response) InternalError() {
-	resp.Code = http.StatusInternalServerError
-	resp.Message = "Внутренняя ошибка сервера"
-}
-
-func (resp *Response) StatusOK() {
-	resp.Code = http.StatusOK
-	resp.Message = "Выполнение прошло успешно"
-}
-
-func (resp *Response) StatusCreated() {
-	resp.Code = http.StatusCreated
-	resp.Message = "Объект успешно создан"
-}
-
-func CreateProduct(product Product) ResponseCreateProduct {
-	resp := ResponseCreateProduct{}
+func CreateProduct(product models.ProductResponse) models.ResponseCreateProduct {
+	resp := models.ResponseCreateProduct{}
 
 	pool := connectionpool.NewConnectionPool()
 	s3s := pool.GetS3Storage()
@@ -123,9 +51,9 @@ func CreateProduct(product Product) ResponseCreateProduct {
 	return resp
 }
 
-func ReadProduct(id int) ResponseReadProduct {
+func ReadProduct(id int) models.ResponseReadProduct {
 
-	resp := ResponseReadProduct{}
+	resp := models.ResponseReadProduct{}
 
 	product := models.Product{}
 
@@ -141,7 +69,7 @@ func ReadProduct(id int) ResponseReadProduct {
 
 	s3s := pool.GetS3Storage()
 
-	resp.Product, err = createDownloadURLs(product, s3s)
+	resp.ProductResponse, err = createDownloadURLs(product, s3s)
 	if err != nil {
 		log.Println(err)
 		resp.InternalError()
@@ -152,9 +80,9 @@ func ReadProduct(id int) ResponseReadProduct {
 
 }
 
-func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage) (Product, error) {
+func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage) (models.ProductResponse, error) {
 
-	product := Product{
+	product := models.ProductResponse{
 		ID:          productDB.ID,
 		Name:        productDB.Name,
 		Description: productDB.Description,
@@ -178,8 +106,8 @@ func createDownloadURLs(productDB models.Product, s3s cloudstorage.CloudStorage)
 	return product, nil
 }
 
-func ReadAllProduct() ResponseReadAllProduct {
-	resp := ResponseReadAllProduct{}
+func ReadAllProduct() models.ResponseReadAllProduct {
+	resp := models.ResponseReadAllProduct{}
 
 	pool := connectionpool.NewConnectionPool()
 	s3s := pool.GetS3Storage()
@@ -192,7 +120,7 @@ func ReadAllProduct() ResponseReadAllProduct {
 		return resp
 	}
 
-	resp.Products = make([]Product, 0, len(products))
+	resp.Products = make([]models.ProductResponse, 0, len(products))
 
 	for _, product := range products {
 		tempProduct, err := createDownloadURLs(product, s3s)
@@ -208,8 +136,8 @@ func ReadAllProduct() ResponseReadAllProduct {
 	return resp
 }
 
-func ChangeCountProduct(req RequestChangeCount) Response {
-	resp := Response{}
+func ChangeCountProduct(req models.RequestChangeCount) models.Response {
+	resp := models.Response{}
 
 	psql, err := dbwork.NewPostgreSQL(dbwork.LoadPSQLConfig())
 	if err != nil {
@@ -229,8 +157,8 @@ func ChangeCountProduct(req RequestChangeCount) Response {
 	return resp
 }
 
-func DeleteProduct(id int) Response {
-	resp := Response{}
+func DeleteProduct(id int) models.Response {
+	resp := models.Response{}
 
 	pool := connectionpool.NewConnectionPool()
 	dataBase := pool.GetDataBase()
