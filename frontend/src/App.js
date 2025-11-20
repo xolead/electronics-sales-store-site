@@ -2,6 +2,7 @@ import './App.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Create from './pages/Create';
+import Cart from './pages/Cart';
 import axios from 'axios';
 
 
@@ -25,6 +26,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/create" element={<Create />} />
+        <Route path="/Cart" element={<Cart />} />
       </Routes>
     </Router>
   );
@@ -71,10 +73,14 @@ function Header() {
     <>
       <div className="header">
         <div className='header_box'>
+        <Link to="/cart" className="cart-link">
           <img src="/img/cart.png" className='cart' alt="Cart" />
+          </Link>
           <Link to="/create" className="create-link">
             Добавить  
           </Link>
+          
+        
         </div>
       </div>
     </>
@@ -129,11 +135,35 @@ function ShoppingList() {
   ];
 
   const handleBuyClick = (product) => {
+    // 1. Открываем модальное окно (оригинальный функционал)
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
-
+  
   const handleConfirm = () => {
+    // 2. Добавляем товар в корзину при подтверждении
+    const cartItem = {
+      ...selectedProduct,
+      quantity: 1
+    };
+    
+    // Получаем текущую корзину из localStorage
+    const existingCart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
+    
+    // Проверяем, есть ли уже такой товар в корзине
+    const existingItemIndex = existingCart.findIndex(item => item.id === selectedProduct.id);
+    
+    if (existingItemIndex >= 0) {
+      // Увеличиваем количество, если товар уже в корзине
+      existingCart[existingItemIndex].quantity += 1;
+    } else {
+      // Добавляем новый товар
+      existingCart.push(cartItem);
+    }
+    
+    // Сохраняем обновленную корзину
+    localStorage.setItem('electronic_cart', JSON.stringify(existingCart));
+    
     alert(`Товар "${selectedProduct.name}" добавлен в корзину!`);
     setIsModalOpen(false);
     setSelectedProduct(null);
