@@ -11,10 +11,34 @@ import (
 
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Разрешаем конкретные origin вместо *
+		allowedOrigins := []string{
+			"http://localhost:3000",
+			"https://localhost:3000",
+			"http://127.0.0.1:3000",
+		}
+
+		origin := r.Header.Get("Origin")
+		allowed := false
+
+		for _, o := range allowedOrigins {
+			if o == origin {
+				allowed = true
+				break
+			}
+		}
+
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, x-amz-acl, x-amz-meta-*")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range, ETag")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)

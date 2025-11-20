@@ -34,6 +34,8 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	resp = service.CreateProduct(req)
+	log.Println("RESP CREATE ", resp, "\n", "REQ CREATE ", req)
+
 	resp.Write(rw)
 }
 

@@ -1,14 +1,14 @@
-import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import './Create.css';
-import axios from 'axios';
+import React, { useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import "./Create.css";
+import axios from "axios";
 
 const Create = () => {
   const [productData, setProductData] = useState({
-    name: '',
-    price: '',
-    category: '',
-    description: ''
+    name: "",
+    price: "",
+    category: "",
+    description: "",
   });
   const [previewImages, setPreviewImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -18,23 +18,26 @@ const Create = () => {
   // Функция создания продукта - получаем URLs для загрузки
   const createProductAndGetUrls = async (productData, fileNames) => {
     try {
-      const response = await axios.post('/product', {
-        name: productData.name,
-        price: Number(productData.price),
-        description: productData.description,
-        parameters: productData.category || '',
-        count: Number(productData.count) || 1,
-        images: fileNames // МАССИВ НАЗВАНИЙ КАРТИНОК
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        }, 
-      });
+      const response = await axios.post(
+        "/product",
+        {
+          name: productData.name,
+          price: Number(productData.price),
+          description: productData.description,
+          parameters: productData.category || "",
+          count: Number(productData.count) || 1,
+          images: fileNames, // МАССИВ НАЗВАНИЙ КАРТИНОК
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
       return response.data; // { URLs: ["s3-url1", "s3-url2", ...] }
-
     } catch (error) {
-      console.error('Ошибка при создании товара:', error);
+      console.error("Ошибка при создании товара:", error);
       throw error;
     }
   };
@@ -49,12 +52,12 @@ const Create = () => {
         // Загружаем файл на S3 используя полученный URL
         await axios.put(s3Url, file, {
           headers: {
-            'Content-Type': file.type,
+            "Content-Type": file.type,
+            "x-amz-acl": "public-read",
           },
         });
 
         console.log(`✅ Файл "${file.name}" загружен на S3`);
-
       } catch (error) {
         console.error(`Ошибка при загрузке файла ${files[i].name}:`, error);
         throw new Error(`Не удалось загрузить файл: ${files[i].name}`);
@@ -64,18 +67,20 @@ const Create = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProductData(prev => ({
+    setProductData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleFileSelect = (files) => {
-    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-    
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
     if (imageFiles.length === 0) return;
 
-    const newImages = imageFiles.map(file => {
+    const newImages = imageFiles.map((file) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -83,15 +88,15 @@ const Create = () => {
             id: Date.now() + Math.random(),
             url: e.target.result,
             file: file,
-            fileName: file.name
+            fileName: file.name,
           });
         };
         reader.readAsDataURL(file);
       });
     });
 
-    Promise.all(newImages).then(images => {
-      setPreviewImages(prev => [...prev, ...images]);
+    Promise.all(newImages).then((images) => {
+      setPreviewImages((prev) => [...prev, ...images]);
     });
   };
 
@@ -108,7 +113,7 @@ const Create = () => {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileSelect(files);
@@ -127,49 +132,48 @@ const Create = () => {
   };
 
   const removeImage = (id) => {
-    setPreviewImages(prev => prev.filter(img => img.id !== id));
+    setPreviewImages((prev) => prev.filter((img) => img.id !== id));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (previewImages.length === 0) {
-      alert('Пожалуйста, добавьте хотя бы одно изображение товара');
+      alert("Пожалуйста, добавьте хотя бы одно изображение товара");
       return;
     }
 
     if (!productData.name || !productData.price || !productData.category) {
-      alert('Пожалуйста, заполните все обязательные поля');
+      alert("Пожалуйста, заполните все обязательные поля");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const fileNames = previewImages.map(img => img.file.name);
-      const files = previewImages.map(img => img.file);
+      const fileNames = previewImages.map((img) => img.file.name);
+      const files = previewImages.map((img) => img.file);
 
-      console.log('📤 Создаем товар и получаем URLs для загрузки...');
+      console.log("📤 Создаем товар и получаем URLs для загрузки...");
 
       const response = await createProductAndGetUrls(productData, fileNames);
-      console.log('✅ Получены URLs для загрузки:', response.urls);
+      console.log("✅ Получены URLs для загрузки:", response.urls);
 
-      console.log('🔄 Загружаем файлы на S3...');
+      console.log("🔄 Загружаем файлы на S3...");
       await uploadFilesToS3(files, response.urls);
-      console.log('✅ Все файлы загружены на S3');
+      console.log("✅ Все файлы загружены на S3");
 
-      alert('Товар успешно добавлен!');
-      
+      alert("Товар успешно добавлен!");
+
       setProductData({
-        name: '',
-        price: '',
-        category: '',
-        description: ''
+        name: "",
+        price: "",
+        category: "",
+        description: "",
       });
       setPreviewImages([]);
-
     } catch (error) {
-      console.error('❌ Ошибка при создании товара:', error);
+      console.error("❌ Ошибка при создании товара:", error);
       alert(`Ошибка при создании товара: ${error.message}`);
     } finally {
       setIsSubmitting(false);
@@ -179,8 +183,8 @@ const Create = () => {
   return (
     <div className="create-page">
       <header className="header">
-        <div className='header_box'>
-          <img src="/img/cart.png" className='cart' alt="Cart" />
+        <div className="header_box">
+          <img src="/img/cart.png" className="cart" alt="Cart" />
           <Link to="/" className="home-link">
             Главная
           </Link>
@@ -188,36 +192,36 @@ const Create = () => {
       </header>
 
       <div className="create-container">
-        <div className='text_add'>Добавить новый товар</div>
-        
+        <div className="text_add">Добавить новый товар</div>
+
         <form onSubmit={handleSubmit} className="product-form">
           {/* Drag & Drop область для изображений */}
           <div className="image-upload-section">
             <h3>Изображения товара *</h3>
-            <div 
-              className={`drop-zone ${isDragging ? 'dragging' : ''} ${previewImages.length > 0 ? 'has-images' : ''}`}
+            <div
+              className={`drop-zone ${isDragging ? "dragging" : ""} ${previewImages.length > 0 ? "has-images" : ""}`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={handleDragAreaClick}
             >
-              <input 
-                type="file" 
+              <input
+                type="file"
                 ref={fileInputRef}
                 onChange={handleFileInputChange}
                 accept="image/*"
                 multiple
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
               />
-              
+
               {previewImages.length > 0 ? (
                 <div className="images-preview-container">
                   <div className="images-grid">
                     {previewImages.map((image) => (
                       <div key={image.id} className="image-preview-item">
                         <img src={image.url} alt="Preview" />
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="remove-image-btn"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -241,7 +245,9 @@ const Create = () => {
                   <div className="drop-icon">📁</div>
                   <p>Перетащите изображения сюда или кликните для выбора</p>
                   <span>PNG, JPG, JPEG (макс. 5MB каждое)</span>
-                  <span className="multiple-hint">Можно выбрать несколько файлов</span>
+                  <span className="multiple-hint">
+                    Можно выбрать несколько файлов
+                  </span>
                 </div>
               )}
             </div>
@@ -255,7 +261,7 @@ const Create = () => {
           {/* Общая информация о товаре */}
           <div className="product-info-section">
             <h3>Информация о товаре</h3>
-            
+
             <div className="form-group">
               <label htmlFor="name">Название товара *</label>
               <input
