@@ -10,11 +10,12 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"electronic/pkg/models"
 	"electronic/pkg/service"
 )
 
 func CreateProduct(rw http.ResponseWriter, r *http.Request) {
-	resp := service.ResponseCreateProduct{}
+	resp := models.ResponseCreateProduct{}
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler CreateProduct ошибка чтения данных: %w", err))
@@ -23,7 +24,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := service.Product{}
+	req := models.ProductResponse{}
 	err = json.Unmarshal(data, &req)
 	if err != nil {
 		log.Println(fmt.Errorf("Handlers create product ошибка декодирования json: %w", err))
@@ -38,7 +39,7 @@ func CreateProduct(rw http.ResponseWriter, r *http.Request) {
 
 func ChangeCountProduct(rw http.ResponseWriter, r *http.Request) {
 
-	resp := service.Response{}
+	resp := models.Response{}
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(fmt.Errorf("Handler ChangeCountProduct: %w", err))
@@ -46,7 +47,7 @@ func ChangeCountProduct(rw http.ResponseWriter, r *http.Request) {
 		resp.Write(rw)
 		return
 	}
-	req := service.RequestChangeCount{}
+	req := models.RequestChangeCount{}
 	if err = json.Unmarshal(data, &req); err != nil {
 		resp.Error(http.StatusBadRequest, "Ошибка чтения json")
 		resp.Write(rw)
@@ -58,7 +59,7 @@ func ChangeCountProduct(rw http.ResponseWriter, r *http.Request) {
 }
 
 func ReadProduct(rw http.ResponseWriter, r *http.Request) {
-	resp := service.ResponseReadProduct{}
+	resp := models.ResponseReadProduct{}
 	vars := mux.Vars(r)
 	strID := vars["id"]
 	id, err := strconv.Atoi(strID)
@@ -78,7 +79,7 @@ func ReadAllProduct(rw http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteProduct(rw http.ResponseWriter, r *http.Request) {
-	resp := service.Response{}
+	resp := models.Response{}
 	vars := mux.Vars(r)
 	strID := vars["id"]
 	id, err := strconv.Atoi(strID)
@@ -93,7 +94,7 @@ func DeleteProduct(rw http.ResponseWriter, r *http.Request) {
 }
 
 func HealthCheck(rw http.ResponseWriter, r *http.Request) {
-	resp := service.Response{}
+	resp := models.Response{}
 	resp.StatusOK()
 	resp.Write(rw)
 }

@@ -86,18 +86,13 @@ func NewPostgreSQL(config PostgreSQLConfig) (DataBase, error) {
 
 	postgres := &postgreSQL{db}
 
-	err = postgres.RunMigrations("")
-	if err != nil {
-		return nil, fmt.Errorf("NewPostgreSQL ошибка миграции: %w", err)
-	}
-
 	return postgres, nil
 }
 
 func (postgres *postgreSQL) RunMigrations(path string) error {
 	driver, err := postgre.WithInstance(postgres.DB, &postgre.Config{})
 	if err != nil {
-		return fmt.Errorf("Оишбка в создании драйвера для миграций: %w", err)
+		return fmt.Errorf("Ошибка в создании драйвера для миграций: %w", err)
 	}
 
 	wd, err := os.Getwd()
@@ -113,6 +108,7 @@ func (postgres *postgreSQL) RunMigrations(path string) error {
 		path,
 		"postgres", driver,
 	)
+
 	if err != nil {
 		return fmt.Errorf("Ошибка миграции NewWithDatabaseInstance: %w", err)
 	}

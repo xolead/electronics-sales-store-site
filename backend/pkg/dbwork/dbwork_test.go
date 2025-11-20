@@ -61,9 +61,9 @@ func setupTestDB(ctx context.Context) (dbwork.DataBase, func(), error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot get current file path")
 	}
+
 	dir := filepath.Dir(filename)
 	migrationsPath := "file://" + filepath.Join(dir, "migrations")
-
 	err = db.RunMigrations(migrationsPath)
 	if err != nil {
 		return nil, nil, err

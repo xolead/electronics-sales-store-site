@@ -1,1 +1,1 @@
-Какой хороший день 
+<?xml version="1.0" encoding="UTF-8"?><Error><Code>NoSuchKey</Code><Message></Message><BucketName>electronic</BucketName><RequestId>tx00000c933dd1f332826d4-0069135ba3-5066367-default</RequestId><HostId>5066367-default-default</HostId></Error>
