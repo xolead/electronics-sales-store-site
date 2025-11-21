@@ -41,6 +41,44 @@ const parseAllParameters = (parametersString) => {
   }
 };
 
+// Хук для отслеживания корзины
+const useCartCount = () => {
+  const [cartCount, setCartCount] = useState(0);
+
+  // Функция для обновления количества товаров в корзине
+  const updateCartCount = () => {
+    const cart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
+    // Подсчитываем количество различных товаров (по id)
+    const uniqueItemsCount = cart.length;
+    setCartCount(uniqueItemsCount);
+  };
+
+  // Слушаем изменения в localStorage
+  useEffect(() => {
+    updateCartCount();
+    
+    // Функция для обработки событий storage
+    const handleStorageChange = (e) => {
+      if (e.key === 'electronic_cart') {
+        updateCartCount();
+      }
+    };
+
+    // Слушаем события storage (из других вкладок)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Слушаем custom event (из этой же вкладки)
+    window.addEventListener('cartUpdated', updateCartCount);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('cartUpdated', updateCartCount);
+    };
+  }, []);
+
+  return cartCount;
+};
+
 const ProductDetail = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -137,6 +175,10 @@ const ProductDetail = () => {
     }
     
     localStorage.setItem('electronic_cart', JSON.stringify(existingCart));
+    
+    // Триггерим событие обновления корзины
+    window.dispatchEvent(new Event('cartUpdated'));
+    
     alert(`Товар "${product.name}" добавлен в корзину!`);
   };
 
@@ -352,13 +394,40 @@ const ProductDetail = () => {
 
 // Компонент Header
 const Header = () => {
+  const cartCount = useCartCount();
+
   return (
     <div className="header">
       <div className='header_box'>
         <Link to="/cart" className="cart-link">
-          <img src="/img/cart.png" className='cart' alt="Cart" />
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img src="/img/cart.png" className='cart' alt="Cart" />
+            {cartCount > 0 && (
+              <span 
+                className="cart-count-badge"
+                style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  right: '-5px',
+                  backgroundColor: '#ff4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              >
+                {cartCount}
+              </span>
+            )}
+          </div>
         </Link>
-        <Link to="/" className="home-link">
+        <Link to="/" className="create-link">
           Главная  
         </Link>
       </div>

@@ -774,3 +774,35 @@
   text-decoration: none;
   cursor: pointer;
 }
+
+/* СТИЛИ ДЛЯ СЧЕТЧИКА КОРЗИНЫ */
+.cart-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  position: relative;
+}
+
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Адаптивность для счетчика корзины */
+@media (max-width: 768px) {
+  .cart-count-badge {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    top: -6px;
+    right: -6px;
+  }
+}
