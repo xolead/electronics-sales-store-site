@@ -9,24 +9,44 @@ const Create = () => {
     price: "",
     category: "",
     description: "",
+    count: "1",
   });
   const [previewImages, setPreviewImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [parameters, setParameters] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Функция создания продукта - получаем URLs для загрузки
+  // Функция создания продукта
   const createProductAndGetUrls = async (productData, fileNames) => {
     try {
+      // Формируем строку параметров в формате: ключ=значение|ключ=значение
+      const parametersArray = [];
+      
+      // Добавляем категорию как первый параметр
+      if (productData.category) {
+        parametersArray.push(`Категория=${productData.category}`);
+      }
+      
+      // Добавляем остальные параметры
+      parameters.forEach(param => {
+        if (param.key && param.value) {
+          parametersArray.push(`${param.key}=${param.value}`);
+        }
+      });
+      
+      // Объединяем все параметры через |
+      const parametersString = parametersArray.join('|');
+
       const response = await axios.post(
         "/product",
         {
           name: productData.name,
           price: Number(productData.price),
           description: productData.description,
-          parameters: productData.category || "",
+          parameters: parametersString,
           count: Number(productData.count) || 1,
-          images: fileNames, // МАССИВ НАЗВАНИЙ КАРТИНОК
+          images: fileNames,
         },
         {
           headers: {
@@ -35,11 +55,21 @@ const Create = () => {
         },
       );
 
-      return response.data; // { URLs: ["s3-url1", "s3-url2", ...] }
+      return response.data;
     } catch (error) {
       console.error("Ошибка при создании товара:", error);
       throw error;
     }
+  };
+
+  // Функция для парсинга параметров (можно использовать на других страницах)
+  const parseParameters = (parametersString) => {
+    if (!parametersString) return [];
+    
+    return parametersString.split('|').map(param => {
+      const [key, value] = param.split('=');
+      return { key: key || '', value: value || '' };
+    });
   };
 
   // Функция загрузки файлов на S3
@@ -49,7 +79,6 @@ const Create = () => {
         const file = files[i];
         const s3Url = s3Urls[i];
 
-        // Загружаем файл на S3 используя полученный URL
         await axios.put(s3Url, file, {
           headers: {
             "Content-Type": file.type,
@@ -71,6 +100,21 @@ const Create = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Функции для работы с динамическими параметрами
+  const addParameter = () => {
+    setParameters([...parameters, { key: "", value: "", id: Date.now() }]);
+  };
+
+  const updateParameter = (id, field, value) => {
+    setParameters(parameters.map(param => 
+      param.id === id ? { ...param, [field]: value } : param
+    ));
+  };
+
+  const removeParameter = (id) => {
+    setParameters(parameters.filter(param => param.id !== id));
   };
 
   const handleFileSelect = (files) => {
@@ -148,6 +192,13 @@ const Create = () => {
       return;
     }
 
+    // Проверяем, что все параметры заполнены
+    const incompleteParameters = parameters.filter(param => !param.key || !param.value);
+    if (incompleteParameters.length > 0) {
+      alert("Пожалуйста, заполните все добавленные параметры (название и значение)");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -165,13 +216,16 @@ const Create = () => {
 
       alert("Товар успешно добавлен!");
 
+      // Сбрасываем форму
       setProductData({
         name: "",
         price: "",
         category: "",
         description: "",
+        count: "1",
       });
       setPreviewImages([]);
+      setParameters([]);
     } catch (error) {
       console.error("❌ Ошибка при создании товара:", error);
       alert(`Ошибка при создании товара: ${error.message}`);
@@ -184,9 +238,6 @@ const Create = () => {
     <div className="create-page">
       <header className="header">
         <div className='header_box'>
-          <Link to="/cart" className="cart-link">
-          <img src="/img/cart.png" className='cart' alt="Cart" />
-          </Link>
           <Link to="/" className="home-link">
             Главная
           </Link>
@@ -264,51 +315,122 @@ const Create = () => {
           <div className="product-info-section">
             <h3>Информация о товаре</h3>
 
-            <div className="form-group">
-              <label htmlFor="name">Название товара *</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={productData.name}
-                onChange={handleInputChange}
-                required
-                placeholder="Например: iPhone 14 Pro"
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="name">Название товара *</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={productData.name}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Например: iPhone 14 Pro"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="price">Цена (₽) *</label>
+                <input
+                  type="number"
+                  id="price"
+                  name="price"
+                  value={productData.price}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="79999"
+                  min="0"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="price">Цена (₽) *</label>
-              <input
-                type="number"
-                id="price"
-                name="price"
-                value={productData.price}
-                onChange={handleInputChange}
-                required
-                placeholder="79999"
-                min="0"
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="category">Категория *</label>
+                <select
+                  id="category"
+                  name="category"
+                  value={productData.category}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">Выберите категорию</option>
+                  <option value="Смартфоны">Смартфоны</option>
+                  <option value="Ноутбуки">Ноутбуки</option>
+                  <option value="Планшеты">Планшеты</option>
+                  <option value="Аксессуары">Аксессуары</option>
+                  <option value="Техника">Техника</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="count">Количество товара *</label>
+                <input
+                  type="number"
+                  id="count"
+                  name="count"
+                  value={productData.count}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="1"
+                  min="1"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="category">Категория *</label>
-              <select
-                id="category"
-                name="category"
-                value={productData.category}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="">Выберите категорию</option>
-                <option value="Смартфоны">Смартфоны</option>
-                <option value="Ноутбуки">Ноутбуки</option>
-                <option value="Планшеты">Планшеты</option>
-                <option value="Аксессуары">Аксессуары</option>
-                <option value="Техника">Техника</option>
-              </select>
+            {/* Динамические параметры */}
+            <div className="parameters-section">
+              <div className="parameters-header">
+                <h4>Дополнительные характеристики</h4>
+                <button 
+                  type="button" 
+                  className="add-parameter-btn"
+                  onClick={addParameter}
+                >
+                  + Добавить характеристику
+                </button>
+              </div>
+              
+              <div className="parameters-info">
+                <span>Формат: "Название: Значение" (например: Цвет: Черный)</span>
+              </div>
+              
+              {parameters.map((param, index) => (
+                <div key={param.id} className="parameter-row">
+                  <input
+                    type="text"
+                    placeholder="Название"
+                    value={param.key}
+                    onChange={(e) => updateParameter(param.id, 'key', e.target.value)}
+                    className="parameter-key"
+                  />
+                  <span className="parameter-equals"></span>
+                  <input
+                    type="text"
+                    placeholder="Значение"
+                    value={param.value}
+                    onChange={(e) => updateParameter(param.id, 'value', e.target.value)}
+                    className="parameter-value"
+                  />
+                  <button
+                    type="button"
+                    className="remove-parameter-btn"
+                    onClick={() => removeParameter(param.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {parameters.length === 0 && (
+                <div className="no-parameters">
+                  <p>Пока не добавлено ни одной характеристики</p>
+                  <span>Например: Цвет: Черный, Память: 128ГБ, Материал: Алюминий</span>
+                </div>
+              )}
             </div>
 
+            {/* Описание товара */}
             <div className="form-group">
               <label htmlFor="description">Описание товара</label>
               <textarea
@@ -316,8 +438,8 @@ const Create = () => {
                 name="description"
                 value={productData.description}
                 onChange={handleInputChange}
-                rows="4"
-                placeholder="Подробное описание товара, характеристики, преимущества..."
+                rows="6"
+                placeholder="Подробное описание товара, характеристики, преимущества, особенности использования..."
               />
             </div>
           </div>
@@ -326,8 +448,12 @@ const Create = () => {
             <Link to="/" className="cancel-btn">
               Отмена
             </Link>
-            <button type="submit" className="submit-btn">
-              Добавить товар
+            <button 
+              type="submit" 
+              className="submit-btn"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Добавление..." : "Добавить товар"}
             </button>
           </div>
         </form>

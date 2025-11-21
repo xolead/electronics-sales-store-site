@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Create from './pages/Create';
 import Cart from './pages/Cart';
+import ProductDetail from './pages/ProductDetail';
 import axios from 'axios';
 
 
@@ -17,9 +18,9 @@ const DeleteProduct = async (id) => {
 // базовый URL S3
 const getFullImageUrl = (filename) => {
   const url = `https://electronic.s3.regru.cloud/products/${filename}`;
-  console.log('Image URL:', url); 
   return url;
 };
+
 const App = () => {
   return (
     <Router>
@@ -27,6 +28,7 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/create" element={<Create />} />
         <Route path="/Cart" element={<Cart />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
       </Routes>
     </Router>
   );
@@ -134,6 +136,20 @@ function ShoppingList() {
     { id: 6, name: "Dell XPS", price: 89999, image: "/img/macbook_air.jpg", category: "Ноутбуки" },
   ];
 
+  const getCategoryFromParameters = (parametersString) => {
+    if (!parametersString) return '';
+      // Разделяем строку по |
+      const pairs = parametersString.split('|');
+      
+      // Ищем параметр с ключом "Категория"
+      for (let pair of pairs) {
+        const [key, value] = pair.split('=');
+        if (key && value && key.trim() === 'Категория') {
+          return value.trim();
+        }
+      }
+    }
+
   const handleBuyClick = (product) => {
     // 1. Открываем модальное окно (оригинальный функционал)
     setSelectedProduct(product);
@@ -163,8 +179,6 @@ function ShoppingList() {
     
     // Сохраняем обновленную корзину
     localStorage.setItem('electronic_cart', JSON.stringify(existingCart));
-    
-    alert(`Товар "${selectedProduct.name}" добавлен в корзину!`);
     setIsModalOpen(false);
     setSelectedProduct(null);
   };
@@ -210,34 +224,38 @@ function ShoppingList() {
         </div>
 
         <div className="products-grid">
-          {products.map(product => (
-            <div key={product.id} className="product-card">
-              <img 
-                src={getFullImageUrl(product.images[0])} 
-                alt={product.name} 
-                className="product-image" 
-                // onError={(e) => {
-                //   // Запасное изображение если основное не загрузилось
-                //   e.target.src = '/img/placeholder.jpg';
-                // }}
-              />
-              <div className="product-details">
-                <span className="category">{product.parameters}</span>
-                <h3>{product.name}</h3>
-                <span className="category">{product.description}</span>
+            {products.map(product => (
+              <div key={product.id} className="product-card">
+                {/* Обертка для кликабельной области */}
+                <Link to={`/product/${product.id}`} className="product-card-link">
+                  <img 
+                    src={getFullImageUrl(product.images[0])} 
+                    alt={product.name} 
+                    className="product-image" 
+                  />
+                  <div className="product-details">
+                    <span className="category">{getCategoryFromParameters(product.parameters)}</span>
+                    <h3>{product.name}</h3>
+                  </div>
+                </Link>
+            
+                {/* Секция с ценой и кнопкой - НЕ кликабельная */}
                 <div className="price-section">
                   <span className="price">{product.price.toLocaleString()} ₽</span>
                   <button 
                     className="buy-btn" 
-                    onClick={() => handleBuyClick(product)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Останавливаем всплытие события
+                      handleBuyClick(product);
+                    }}
                   >
                     Купить
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
+          
 
         {products.length === 0 && !loading && (
           <div className="empty-state">
@@ -255,7 +273,7 @@ function ShoppingList() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Подтверждение покупки</h2>
             <div className="modal-product-info">
-              <img src={selectedProduct?.image} alt={selectedProduct?.name} />
+              <img src={getFullImageUrl(selectedProduct.images[0])} alt={selectedProduct?.name} />
               <div>
                 <h3>{selectedProduct?.name}</h3>
                 <p className="price">{selectedProduct?.price.toLocaleString()} ₽</p>
