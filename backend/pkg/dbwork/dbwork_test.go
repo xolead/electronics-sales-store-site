@@ -85,6 +85,8 @@ func TestPostgreSQL(t *testing.T) {
 	assert.NoError(t, err)
 	defer cleanup()
 
+	db.RunMigrations("")
+
 	testImage := models.ProductImage{
 		Name: "lol.txt",
 		Key:  uuid.New().String(),

@@ -12,14 +12,11 @@ import (
 	postgre "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
 
 	"electronic/pkg/models"
 )
 
 type DataBase interface {
-	CreateUser(login, password string) error
-	VerifyPassword(login, password string) (bool, error)
 	CreateProduct(pr models.Product) (int, error)
 	UpdateProduct()
 	DeleteProduct(id int) ([]string, error)
@@ -137,55 +134,6 @@ func (postgres *postgreSQL) RunMigrations(path string) error {
 	}
 	log.Println("Миграция прошла успешно")
 	return nil
-}
-
-func (postgres *postgreSQL) CreateUser(login, password string) error {
-	createUserQuery := `INSERT INTO users
-											(login, password)
-											VALUES($1, $2);`
-	id, err := postgres.getUserID(login)
-	if err != nil {
-		return fmt.Errorf("CreateUser ошибка в getUserID: %w", err)
-	}
-
-	if id != -1 {
-		return fmt.Errorf("Пользователь с таким логином уже существует")
-	}
-
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("Ошибка генерации хэша пароля: %w", err)
-	}
-
-	_, err = postgres.Exec(createUserQuery, login, hashPassword)
-	if err != nil {
-		return fmt.Errorf("Ошибка создани пользователя Exec: %w", err)
-	}
-
-	return nil
-}
-
-func (postgres *postgreSQL) getUserID(login string) (int, error) {
-	id := -1
-	getUserQuery := `SELECT id FROM users WHERE login=$1`
-	if err := postgres.QueryRow(getUserQuery, login).Scan(&id); err != nil {
-		return -1, fmt.Errorf("getUserID ошибка queryRow: %w", err)
-	}
-	return id, nil
-}
-
-func (postgres *postgreSQL) VerifyPassword(login, password string) (bool, error) {
-	getUserQuery := `SELECT password FROM users WHERE login=$1`
-
-	var realPassword []byte
-
-	if err := postgres.QueryRow(getUserQuery, login).Scan(&realPassword); err != nil {
-		return false, err
-	}
-
-	err := bcrypt.CompareHashAndPassword(realPassword, []byte(password))
-
-	return err == nil, nil
 }
 
 func (postgres *postgreSQL) CreateProduct(pr models.Product) (int, error) {

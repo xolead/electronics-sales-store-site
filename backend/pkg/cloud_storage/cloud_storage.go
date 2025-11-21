@@ -131,7 +131,6 @@ func (s3s *s3Storage) UploadURL(filename string) (models.S3SImage, error) {
 		Bucket:      aws.String(s3s.bucket),
 		Key:         aws.String(s3s.folder + "/" + fileID),
 		ContentType: aws.String(mime),
-		ACL:         types.ObjectCannedACLPublicRead,
 	}, s3.WithPresignExpires(expires))
 
 	if err != nil {
