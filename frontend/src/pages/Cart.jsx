@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './Cart.css';
 import axios from 'axios';
+import Header from '../components/layout/Header/Header'
+import { getCategoryFromParameters } from '../utils/formattingCategory';
 
 // Хук для отслеживания корзины
 const useCartCount = () => {
@@ -41,47 +43,6 @@ const useCartCount = () => {
   return cartCount;
 };
 
-// Компонент Header
-const Header = () => {
-  const cartCount = useCartCount();
-
-  return (
-    <div className="header">
-      <div className='header_box'>
-        <Link to="/cart" className="cart-link">
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img src="/img/cart.png" className='cart' alt="Cart" />
-            {cartCount > 0 && (
-                <span 
-                  style={{
-                    position: 'absolute',
-                    top: '-5px',
-                    right: '-5px',
-                    backgroundColor: '#ff4444',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  {cartCount}
-                </span>
-              )}
-          </div>
-        </Link>
-        <Link to="/" className="create-link">
-          Главная  
-        </Link>
-      </div>
-    </div>
-  );
-};
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
@@ -207,27 +168,6 @@ const Cart = () => {
 
   const getFullImageUrl = (filename) => {
     return `https://electronic.s3.regru.cloud/products/${filename}`;
-  };
-
-  // Функция для получения категории из параметров
-  const getCategoryFromParameters = (parametersString) => {
-    if (!parametersString) return '';
-    
-    try {
-      const pairs = parametersString.split('|');
-      
-      for (let pair of pairs) {
-        const [key, value] = pair.split('=');
-        if (key && value && key.trim() === 'Категория') {
-          return value.trim();
-        }
-      }
-      
-      return '';
-    } catch (error) {
-      console.error('Ошибка парсинга категории:', error);
-      return '';
-    }
   };
 
   // Функция для отправки запроса на изменение количества товара

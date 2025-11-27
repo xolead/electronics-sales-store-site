@@ -1,13 +1,16 @@
 import './App.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Create from './pages/Create';
+import Create from './pages/admin/Create';
 import Cart from './pages/Cart';
+import Registration from './pages/Registration';
 import ProductDetail from './pages/ProductDetail';
+import AdminProducts from './pages/admin/AdminProducts'; 
+import AdminPanel from './pages/admin/AdminPanel';
 import axios from 'axios';
+import Header from './components/layout/Header/Header'
+import { getAll } from './services/api';
 
-const api = axios.create({
-});
 
 const DeleteProduct = async (id) => {
   await axios.delete('/product/' + id)
@@ -26,34 +29,16 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/create" element={<Create />} />
         <Route path="/Cart" element={<Cart />} />
+        <Route path="/Registration" element={<Registration />} />
         <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/products" element={<AdminProducts />} />
+        <Route path="/admin/create" element={<Create />} />
       </Routes>
     </Router>
   );
 }
 
-const getAll = async () => {
-  try {
-    console.log('🔄 Запрашиваем товары...');
-    const response = await axios.get('/product');
-    console.log('📦 Полный ответ:', response.data);
-    
-    if (response.data && response.data.Products) {
-      console.log('✅ Товары найдены:', response.data.Products);
-      return response.data.Products;
-    } else if (response.data && Array.isArray(response.data)) {
-      console.log('✅ Товары (массив):', response.data);
-      return response.data;
-    } else {
-      console.warn('⚠️ Товары не найдены в ответе');
-      return [];
-    }
-    
-  } catch (error) {
-    console.error('❌ Ошибка при получении товаров:', error);
-    return [];
-  }
-};
 
 function HomePage() {
   return (
@@ -66,86 +51,6 @@ function HomePage() {
   );
 }
 
-// Хук для отслеживания корзины
-const useCartCount = () => {
-  const [cartCount, setCartCount] = useState(0);
-
-  // Функция для обновления количества товаров в корзине
-  const updateCartCount = () => {
-    const cart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
-    // Подсчитываем количество различных товаров (по id)
-    const uniqueItemsCount = cart.length;
-    setCartCount(uniqueItemsCount);
-  };
-
-  // Слушаем изменения в localStorage
-  useEffect(() => {
-    updateCartCount();
-    
-    // Функция для обработки событий storage
-    const handleStorageChange = (e) => {
-      if (e.key === 'electronic_cart') {
-        updateCartCount();
-      }
-    };
-
-    // Слушаем события storage (из других вкладок)
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Слушаем custom event (из этой же вкладки)
-    window.addEventListener('cartUpdated', updateCartCount);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('cartUpdated', updateCartCount);
-    };
-  }, []);
-
-  return cartCount;
-};
-
-function Header() {
-  const cartCount = useCartCount();
-
-  return (
-    <>
-      <div className="header">
-        <div className='header_box'>
-          <Link to="/cart" className="cart-link">
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <img src="/img/cart.png" className='cart' alt="Cart" />
-              {cartCount > 0 && (
-                <span 
-                  style={{
-                    position: 'absolute',
-                    top: '-5px',
-                    right: '-5px',
-                    backgroundColor: '#ff4444',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  {cartCount}
-                </span>
-              )}
-            </div>
-          </Link>
-          <Link to="/create" className="create-link">
-            Добавить  
-          </Link>
-        </div>
-      </div>
-    </>
-  );
-}
 
 function ShoppingList() {
   const [selectedProduct, setSelectedProduct] = useState(null);

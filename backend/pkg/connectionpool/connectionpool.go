@@ -17,6 +17,8 @@ func init() {
 		panic(err)
 	}
 
+	dataBase.RunMigrations("")
+
 	s3s, err = cloudstorage.NewS3S(cloudstorage.LoadConfig())
 	if err != nil {
 		panic(err)
