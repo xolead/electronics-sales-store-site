@@ -20,8 +20,8 @@ type Response struct {
 }
 
 type RUser struct {
-	Login    string `json:"login" binding:"required, min=5, max=24"`
-	Password string `json:"password" binding:"required, min=8, max=24,password"`
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
 func SendResponse(c *gin.Context, code int, message string, id uuid.UUID, admin bool) {

@@ -11,7 +11,7 @@ FROM debian:stable-slim
 
 WORKDIR /app
 
-COPY --from=builder /app/auth /app/authoriz
+COPY --from=builder /app/authoriz /app/authoriz
 COPY --from=builder /app/pkg/dbwork/migrations /app/pkg/dbwork/migrations
 EXPOSE 8083
 

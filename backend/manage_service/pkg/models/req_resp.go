@@ -107,5 +107,3 @@ func SendInternalServerError(c *gin.Context) {
 		Message: "Неизвестная ошибка сервера",
 	})
 }
-
-func SendParseResponse(c *gin.Context)

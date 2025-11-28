@@ -13,9 +13,7 @@ func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Разрешаем конкретные origin вместо *
 		allowedOrigins := []string{
-			"http://localhost:3000",
-			"https://localhost:3000",
-			"http://127.0.0.1:3000",
+			"http://manage_service:8080",
 		}
 
 		origin := r.Header.Get("Origin")

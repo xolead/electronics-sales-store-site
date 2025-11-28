@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"io"
 	"manage-service/pkg/communication"
 	"manage-service/pkg/models"
 	"net/http"
@@ -118,5 +119,42 @@ func Logout(c *gin.Context) {
 }
 
 func GetAllProduct(c *gin.Context) {
+	resp, err := http.Get(
+		"http://core_service:8082/product")
+	if err != nil {
+		models.SendInternalServerError(c)
+		log.Error().Msgf("Ошибка получения ответа: %v", err)
+		return
+	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		models.SendInternalServerError(c)
+		log.Error().Msgf("Ошибка чтения ответа: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+}
+
+func GetProduct(c *gin.Context) {
+	id := c.Param("id")
+	resp, err := http.Get(
+		"http://core_service:8082/product/" + id)
+	if err != nil {
+		models.SendInternalServerError(c)
+		log.Error().Msgf("Ошибка получения ответа: %v", err)
+		return
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		models.SendInternalServerError(c)
+		log.Error().Msgf("Ошибка чтения ответа: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 }
