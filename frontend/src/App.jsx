@@ -23,6 +23,27 @@ const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Настройка интерцептора для axios
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Очистка интерцептора при размонтировании
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+    };
+  }, []);
+
   // Проверяем авторизацию при загрузке приложения
   useEffect(() => {
     checkAuthStatus();
@@ -34,7 +55,8 @@ const App = () => {
       
       if (token) {
         // Если есть токен, проверяем его валидность на сервере
-        const response = await axios.get('/api/auth/check', {
+        // Замените на ваш реальный эндпоинт проверки токена
+        const response = await axios.get('/api/auth/verify', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -68,9 +90,16 @@ const App = () => {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    try {
+      // Опционально: отправляем запрос на logout на сервер
+      await axios.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    } finally {
+      localStorage.removeItem('authToken');
+      setIsLoggedIn(false);
+    }
   };
 
   // Если проверка авторизации еще идет, показываем заглушку
@@ -87,7 +116,7 @@ const App = () => {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
-        <Route path="/create" element={<Create />} />
+        <Route path="/create" element={<Create isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
         <Route path="/Cart" element={<Cart isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
         <Route path="/registration" element={<Registration onLogin={handleLogin} />} />
         <Route path="/personal" element={<PersonalAccount isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
@@ -99,7 +128,6 @@ const App = () => {
     </Router>
   );
 }
-
 function HomePage({ isLoggedIn, onLogout }) {
   return (
     <div className="App">

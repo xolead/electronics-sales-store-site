@@ -85,15 +85,18 @@ function RegistrationAndLogin({ onLogin }) {
                 password: formData.password
             });
 
-            if (response.data.success) {
-                if (response.data.token) {
-                    localStorage.setItem('authToken', response.data.token);
-                }
-                onLogin(response.data.token);
+            // Access токен приходит в теле ответа
+            if (response.data.access_token) {
+                localStorage.setItem('authToken', response.data.access_token);
+                
+                // Refresh токен автоматически устанавливается в http-only cookie
+                // через заголовок Set-Cookie, ничего делать не нужно
+                
+                onLogin(response.data.access_token);
                 setIsActive(true);
                 setTimeout(() => navigate('/'), 1500);
             } else {
-                setError(response.data.message || 'Ошибка при регистрации');
+                setError('Ошибка при регистрации: токен не получен');
             }
         } catch (error) {
             console.error('Ошибка регистрации:', error);
@@ -124,15 +127,18 @@ function RegistrationAndLogin({ onLogin }) {
                 password: loginData.password
             });
 
-            if (response.data.success) {
-                if (response.data.token) {
-                    localStorage.setItem('authToken', response.data.token);
-                }
-                onLogin(response.data.token);
+            // Access токен приходит в теле ответа
+            if (response.data.access_token) {
+                localStorage.setItem('authToken', response.data.access_token);
+                
+                // Refresh токен автоматически устанавливается в http-only cookie
+                // через заголовок Set-Cookie, ничего делать не нужно
+                
+                onLogin(response.data.access_token);
                 setIsActive(true);
                 setTimeout(() => navigate('/'), 1500);
             } else {
-                setError(response.data.message || 'Ошибка при входе');
+                setError('Ошибка при входе: токен не получен');
             }
         } catch (error) {
             console.error('Ошибка входа:', error);
