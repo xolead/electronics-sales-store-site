@@ -45,7 +45,14 @@ func AuthMiddleware() gin.HandlerFunc {
 			if err != nil {
 				models.SendResponse(c, http.StatusUnauthorized, "Токены не действительный")
 			}
-			models.SendTokensRefresh(c, tokens.Access, tokens.Refresh)
+			c.SetCookie("refreshToken",
+				tokens.Refresh,
+				60*60*24*3,
+				"/",
+				"localhost",
+				true,
+				true)
+			models.SendAccess(c, http.StatusContinue, tokens.Access)
 			c.Abort()
 			return
 		}
@@ -54,6 +61,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("admin", admin)
 		c.Set("access", access)
 		c.Set("refresh", refresh)
-
+		c.Next()
 	}
 }

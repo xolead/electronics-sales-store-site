@@ -40,10 +40,10 @@ type ResponseAuth struct {
 	Admin bool `json:"admin"`
 }
 
-func SendAccess(c *gin.Context, access string) {
-	c.JSON(http.StatusContinue, ResponseAccess{
+func SendAccess(c *gin.Context, code int, access string) {
+	c.JSON(code, ResponseAccess{
 		Response: Response{
-			Code:    http.StatusContinue,
+			Code:    code,
 			Message: "Токены устарели и были обновлены",
 		},
 		Access: access,
