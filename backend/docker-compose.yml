@@ -1,11 +1,11 @@
 services:
   db:
-    image: postgres:15
+    build: .
     container_name: db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: electronic
+      POSTGRES_MULTIPLE_DATABASES: auth_db,authoriz_db,core_db
     ports:
       - "5434:5432"
     healthcheck:
@@ -17,11 +17,55 @@ services:
       electronic:
         aliases:
           - database
-  backend:
-    build: .
-    container_name: electronic_backend
+
+  core_service:
+    build: ./core_service
+    container_name: core_service
     env_file:
-      - config.env
+      - ./core_service/config.env
+    ports:
+      - "8082:8082"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      electronic:
+        aliases:
+          - core_service
+
+  auth_service:
+    build: ./authentication_service
+    container_name: auth_service
+    env_file:
+      - ./authentication_service/config.env
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      electronic:
+        aliases:
+          - auth_service
+
+  authoriz_service:
+    build: ./authorization_service
+    container_name: autoriz_service
+    env_file:
+      - ./authorization_service/config.env
+    ports:
+      - "8083:8083"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      electronic:
+        aliases:
+          - authorization_service
+
+  manage_service:
+    build: ./manage_service
+    container_name: manage_service
     ports:
       - "8080:8080"
     depends_on:
@@ -30,7 +74,7 @@ services:
     networks:
       electronic:
         aliases:
-          - backend
+          - manage_service
 
 networks:
   electronic:
