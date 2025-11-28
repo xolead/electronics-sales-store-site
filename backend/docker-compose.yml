@@ -17,20 +17,51 @@ services:
       electronic:
         aliases:
           - database
-  backend:
-    build: .
-    container_name: electronic_backend
+
+  core_service:
+    build: ./core_service
+    container_name: core_service
     env_file:
-      - config.env
+      - ./core_service/config.env
     ports:
-      - "8080:8080"
+      - "8082:8082"
     depends_on:
       db:
         condition: service_healthy
     networks:
       electronic:
         aliases:
-          - backend
+          - core_service
+
+  auth_service:
+    build: ./authentication_service
+    container_name: auth_service
+    env_file:
+      - ./authentication_service/config.env
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      electronic:
+        aliases:
+          - auth_service
+
+  authoriz_service:
+    build: ./authorization_service
+    container_name: autoriz_service
+    env_file:
+      - ./authorization_service/config.env
+    ports:
+      - "8083:8083"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      electronic:
+        aliases:
+          - authorization_service
 
 networks:
   electronic:
