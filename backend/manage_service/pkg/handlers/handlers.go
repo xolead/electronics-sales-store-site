@@ -39,9 +39,15 @@ func Registration(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refreshToken", tokens.Refresh, 60*60*24*3, "/", "localhost", true, true)
+	c.SetCookie("refreshToken",
+		tokens.Refresh,
+		60*60*24*3,
+		"/",
+		"localhost",
+		true,
+		true)
 
-	models.SendAccess(c, tokens.Access)
+	models.SendAccess(c, http.StatusCreated, tokens.Access)
 
 }
 
@@ -79,7 +85,7 @@ func Login(c *gin.Context) {
 		true,
 		true)
 
-	models.SendAccess(c, tokens.Access)
+	models.SendAccess(c, http.StatusOK, tokens.Access)
 
 }
 
@@ -92,7 +98,7 @@ func Logout(c *gin.Context) {
 	c.SetCookie(
 		"refresh_token",
 		"",
-		-1, // удаляем куку
+		-1,
 		"/",
 		"localhost",
 		true,
