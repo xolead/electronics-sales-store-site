@@ -1,47 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import './Cart.css';
 import axios from 'axios';
+
+
+import './Cart.css';
 import Header from '../components/layout/Header/Header'
-import { getCategoryFromParameters } from '../utils/formattingCategory';
-
-// Хук для отслеживания корзины
-const useCartCount = () => {
-  const [cartCount, setCartCount] = useState(0);
-
-  // Функция для обновления количества товаров в корзине
-  const updateCartCount = () => {
-    const cart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
-    // Подсчитываем количество различных товаров (по id)
-    const uniqueItemsCount = cart.length;
-    setCartCount(uniqueItemsCount);
-  };
-
-  // Слушаем изменения в localStorage
-  useEffect(() => {
-    updateCartCount();
-    
-    // Функция для обработки событий storage
-    const handleStorageChange = (e) => {
-      if (e.key === 'electronic_cart') {
-        updateCartCount();
-      }
-    };
-
-    // Слушаем события storage (из других вкладок)
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Слушаем custom event (из этой же вкладки)
-    window.addEventListener('cartUpdated', updateCartCount);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('cartUpdated', updateCartCount);
-    };
-  }, []);
-
-  return cartCount;
-};
+import { getCategoryFromParameters } from '../utils/parameters';
+import { getFullImageUrl } from '../utils/loadProductsAndDelete';
 
 
 const Cart = () => {
@@ -166,12 +131,8 @@ const Cart = () => {
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
-  const getFullImageUrl = (filename) => {
-    return `https://electronic.s3.regru.cloud/products/${filename}`;
-  };
-
   // Функция для отправки запроса на изменение количества товара
-  const updateProductCountOnServer = async (productId, quantityChange) => {
+  const updateProductCountOnServerBecauseCart = async (productId, quantityChange) => {
     try {
       const response = await axios.put('/product/change', {
         ID: productId,
@@ -230,7 +191,7 @@ const Cart = () => {
     try {
       // Отправляем запросы для каждого товара в корзине
       const updatePromises = cartItems.map(item => 
-        updateProductCountOnServer(item.id, item.quantity)
+        updateProductCountOnServerBecauseCart(item.id, item.quantity)
       );
 
       // Ждем завершения всех запросов

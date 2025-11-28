@@ -26,3 +26,22 @@ export const getAll = async () => {
       return [];
     }
   };
+
+export const updateProductCountOnServer = async (productId, quantityChange) => {
+  try {
+    const response = await axios.put('/product/change', {
+      ID: productId,
+      Count: -quantityChange // Отправляем отрицательное значение
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`✅ Количество товара ${productId} уменьшено на ${quantityChange}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Ошибка при обновлении количества товара ${productId}:`, error);
+    throw error;
+  }
+};

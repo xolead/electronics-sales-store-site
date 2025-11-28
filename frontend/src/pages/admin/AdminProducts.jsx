@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './AdminProducts.css';
-import { getCategoryFromParameters } from '../../utils/formattingCategory';
-import Create from './Create';
+import { getCategoryFromParameters } from '../../utils/parameters';
+import {
+    addParameter,
+    updateParameter,
+    removeParameter,
+    validateParameters,
+    prepareParametersForSubmit
+} from '../../utils/parameters';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
@@ -15,6 +21,10 @@ const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewImages, setPreviewImages] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [parameters, setParameters] = useState([]);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadProducts();
@@ -44,11 +54,130 @@ const AdminProducts = () => {
   };
 
   const handleEdit = (product) => {
+    // Загружаем существующие изображения
+    const existingImages = product.images ? product.images.map((image, index) => ({
+      id: `existing-${index}`,
+      url: `https://electronic.s3.regru.cloud/products/${image}`,
+      fileName: image,
+      isExisting: true
+    })) : [];
+    
+    setPreviewImages(existingImages);
+    
+    // Парсим параметры
+    const parsedParameters = product.parameters ? 
+      product.parameters.split('|').map(param => {
+        const [key, value] = param.split('=');
+        return { id: Date.now() + Math.random(), key: key || '', value: value || '' };
+      }) : [];
+    
+    setParameters(parsedParameters);
     setEditingProduct({ ...product });
   };
 
   const handleCancelEdit = () => {
     setEditingProduct(null);
+    setPreviewImages([]);
+    setParameters([]);
+  };
+
+  // Функции для управления изображениями
+  const handleFileSelect = (files) => {
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    if (imageFiles.length === 0) return;
+
+    const newImages = imageFiles.map((file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve({
+            id: Date.now() + Math.random(),
+            url: e.target.result,
+            file: file,
+            fileName: file.name,
+            isNew: true
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(newImages).then((images) => {
+      setPreviewImages((prev) => [...prev, ...images]);
+    });
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      handleFileSelect(files);
+    }
+  };
+
+  const handleDragAreaClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeImage = (id) => {
+    setPreviewImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  // Функции для управления параметрами
+  const handleAddParameter = () => {
+    addParameter(parameters, setParameters);
+  };
+
+  const handleUpdateParameter = (id, field, value) => {
+    updateParameter(parameters, setParameters, id, field, value);
+  };
+
+  const handleRemoveParameter = (id) => {
+    removeParameter(parameters, setParameters, id);
+  };
+
+  // Функция загрузки новых файлов на S3
+  const uploadFilesToS3 = async (files, s3Urls) => {
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const file = files[i];
+        const s3Url = s3Urls[i];
+
+        await axios.put(s3Url, file, {
+          headers: {
+            "Content-Type": file.type,
+            "x-amz-acl": "public-read",
+          },
+        });
+
+        console.log(`✅ Файл "${file.name}" загружен на S3`);
+      } catch (error) {
+        console.error(`Ошибка при загрузке файла ${files[i].name}:`, error);
+        throw new Error(`Не удалось загрузить файл: ${files[i].name}`);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -57,17 +186,48 @@ const AdminProducts = () => {
     try {
       setSaveLoading(true);
       
+      // Проверяем параметры
+      const validation = validateParameters(parameters);
+      if (!validation.isValid) {
+        alert(`Пожалуйста, заполните все добавленные параметры (${validation.incompleteCount} не заполнено)`);
+        return;
+      }
+
       // Подготавливаем данные для отправки
+      const parametersString = prepareParametersForSubmit(parameters, editingProduct.category);
+      
+      // Разделяем изображения на существующие и новые
+      const existingImages = previewImages.filter(img => img.isExisting).map(img => img.fileName);
+      const newImages = previewImages.filter(img => img.isNew);
+      const newImageFiles = newImages.map(img => img.file);
+      const newImageNames = newImages.map(img => img.fileName);
+
+      // Обновляем товар с существующими изображениями
       const productData = {
         name: editingProduct.name,
         price: Number(editingProduct.price),
         category: editingProduct.category,
         description: editingProduct.description,
         count: Number(editingProduct.count),
-        parameters: editingProduct.parameters
+        parameters: parametersString,
+        images: [...existingImages, ...newImageNames] // Объединяем старые и новые имена файлов
       };
 
+      // Сначала обновляем товар
       await axios.put(`/product/${editingProduct.id}`, productData);
+      
+      // Если есть новые изображения, загружаем их на S3
+      if (newImages.length > 0) {
+        console.log("🔄 Загружаем новые файлы на S3...");
+        
+        // Получаем URLs для загрузки новых файлов
+        const uploadResponse = await axios.post('/product/upload-urls', {
+          fileNames: newImageNames
+        });
+        
+        await uploadFilesToS3(newImageFiles, uploadResponse.data.urls);
+        console.log("✅ Все новые файлы загружены на S3");
+      }
       
       // Обновляем локальное состояние
       setProducts(prev => prev.map(p => 
@@ -75,6 +235,8 @@ const AdminProducts = () => {
       ));
       
       setEditingProduct(null);
+      setPreviewImages([]);
+      setParameters([]);
       alert('Товар успешно обновлен!');
     } catch (err) {
       console.error('❌ Ошибка обновления товара:', err);
@@ -133,8 +295,8 @@ const AdminProducts = () => {
     return (
       <div className="admin-products">
         <div className="admin-section">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
+          <div className="admin-loading-container">
+            <div className="admin-loading-spinner"></div>
             <p>Загрузка товаров...</p>
           </div>
         </div>
@@ -145,39 +307,43 @@ const AdminProducts = () => {
   return (
     <div className="admin-products">
       <div className="admin-section">
-        <div className="products-header">
+        <div className="admin-products-header">
           <h2>Управление товарами</h2>
-          <Link to="/admin/create" className="add-product-btn">
+          <Link to="/admin" className='admin-add-product-btn' style={{marginRight: '130px'}} >
+            Вернуться
+          </Link>
+
+          <Link to="/admin/create" className="admin-add-product-btn">
             + Добавить товар
           </Link>
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="admin-error-message">
             <p>{error}</p>
-            <button onClick={loadProducts} className="retry-btn">
+            <button onClick={loadProducts} className="admin-retry-btn">
               Попробовать снова
             </button>
           </div>
         )}
 
-        <div className="products-controls">
-          <div className="search-box">
+        <div className="admin-products-controls">
+          <div className="admin-search-box">
             <input
               type="text"
               placeholder="Поиск по названию или категории..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              className="admin-search-input"
             />
           </div>
-          <div className="products-stats">
+          <div className="admin-products-stats">
             Всего товаров: {products.length}
           </div>
         </div>
 
-        <div className="products-table-container">
-          <table className="products-table">
+        <div className="admin-products-table-container">
+          <table className="admin-products-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -192,14 +358,14 @@ const AdminProducts = () => {
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="no-products">
+                  <td colSpan="7" className="admin-no-products">
                     {searchTerm ? 'Товары не найдены' : 'Нет товаров'}
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map(product => (
                   <tr key={product.id}>
-                    <td className="product-id">{product.id}</td>
+                    <td className="admin-product-id">{product.id}</td>
                     <td className="admin-product-image">
                       {product.images && product.images.length > 0 ? (
                         <img 
@@ -210,24 +376,24 @@ const AdminProducts = () => {
                           }}
                         />
                       ) : (
-                        <div className="no-image">Нет фото</div>
+                        <div className="admin-no-image">Нет фото</div>
                       )}
                     </td>
-                    <td className="product-name">{product.name}</td>
+                    <td className="admin-product-name">{product.name}</td>
                     <td className="admin-product-category">{getCategoryFromParameters(product.parameters)}</td>
-                    <td className="product-price">{product.price?.toLocaleString()} ₽</td>
-                    <td className="product-count">{product.count} шт.</td>
-                    <td className="product-actions">
+                    <td className="admin-product-price">{product.price?.toLocaleString()} ₽</td>
+                    <td className="admin-product-count">{product.count} шт.</td>
+                    <td className="admin-product-actions">
                       <button
                         onClick={() => handleEdit(product)}
-                        className="edit-btn"
+                        className="admin-edit-btn"
                         title="Редактировать"
                       >
                         ✏️
                       </button>
                       <button
                         onClick={() => handleDeleteClick(product)}
-                        className="delete-btn"
+                        className="admin-delete-btn"
                         title="Удалить"
                       >
                         🗑️
@@ -243,10 +409,73 @@ const AdminProducts = () => {
 
       {/* Модальное окно редактирования */}
       {editingProduct && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-content">
             <h3>Редактирование товара</h3>
             
+            {/* Секция изображений */}
+            <div className="image-upload-section">
+              <h3>Изображения товара</h3>
+              <div
+                className={`drop-zone ${isDragging ? "dragging" : ""} ${previewImages.length > 0 ? "has-images" : ""}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={handleDragAreaClick}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileInputChange}
+                  accept="image/*"
+                  multiple
+                  style={{ display: "none" }}
+                />
+
+                {previewImages.length > 0 ? (
+                  <div className="images-preview-container">
+                    <div className="images-grid">
+                      {previewImages.map((image) => (
+                        <div key={image.id} className="image-preview-item">
+                          <img src={image.url} alt="Preview" />
+                          <button
+                            type="button"
+                            className="remove-image-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(image.id);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <div className="add-more-images">
+                        <div className="add-more-content">
+                          <div className="add-icon">+</div>
+                          <span>Добавить еще</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="drop-zone-content">
+                    <div className="drop-icon">📁</div>
+                    <p>Перетащите изображения сюда или кликните для выбора</p>
+                    <span>PNG, JPG, JPEG (макс. 5MB каждое)</span>
+                    <span className="multiple-hint">
+                      Можно выбрать несколько файлов
+                    </span>
+                  </div>
+                )}
+              </div>
+              {previewImages.length > 0 && (
+                <div className="images-counter">
+                  Изображений: {previewImages.length}
+                </div>
+              )}
+            </div>
+
             <div className="form-group">
               <label>Название товара *</label>
               <input
@@ -312,29 +541,69 @@ const AdminProducts = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label>Характеристики</label>
-              <textarea
-                name="parameters"
-                value={editingProduct.parameters || ''}
-                onChange={handleInputChange}
-                rows="3"
-                placeholder="Формат: ключ=значение|ключ=значение"
-              />
-              <small>Формат: Цвет=Черный|Память=128ГБ</small>
+            {/* Секция характеристик */}
+            <div className="parameters-section">
+              <div className="parameters-header">
+                <h4>Дополнительные характеристики</h4>
+                <button 
+                  type="button" 
+                  className="add-parameter-btn"
+                  onClick={handleAddParameter}
+                >
+                  + Добавить характеристику
+                </button>
+              </div>
+              
+              <div className="parameters-info">
+                <span>Формат: "Название: Значение" (например: Цвет: Черный)</span>
+              </div>
+              
+              {parameters.map((param, index) => (
+                <div key={param.id} className="parameter-row">
+                  <input
+                    type="text"
+                    placeholder="Название"
+                    value={param.key}
+                    onChange={(e) => handleUpdateParameter(param.id, 'key', e.target.value)}
+                    className="parameter-key"
+                  />
+                  <span className="parameter-equals"></span>
+                  <input
+                    type="text"
+                    placeholder="Значение"
+                    value={param.value}
+                    onChange={(e) => handleUpdateParameter(param.id, 'value', e.target.value)}
+                    className="parameter-value"
+                  />
+                  <button
+                    type="button"
+                    className="remove-parameter-btn"
+                    onClick={() => handleRemoveParameter(param.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {parameters.length === 0 && (
+                <div className="no-parameters">
+                  <p>Пока не добавлено ни одной характеристики</p>
+                  <span>Например: Цвет: Черный, Память: 128ГБ, Материал: Алюминий</span>
+                </div>
+              )}
             </div>
 
-            <div className="modal-actions">
+            <div className="admin-modal-actions">
               <button
                 onClick={handleCancelEdit}
-                className="cancel-btn"
+                className="admin-cancel-btn"
                 disabled={saveLoading}
               >
                 Отмена
               </button>
               <button
                 onClick={handleSave}
-                className="save-btn"
+                className="admin-save-btn"
                 disabled={saveLoading}
               >
                 {saveLoading ? 'Сохранение...' : 'Сохранить'}
@@ -346,23 +615,23 @@ const AdminProducts = () => {
 
       {/* Модальное окно удаления */}
       {showDeleteModal && productToDelete && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="admin-modal-overlay">
+          <div className="admin-modal-content">
             <h3>Удаление товара</h3>
             <p>Вы уверены, что хотите удалить товар "<strong>{productToDelete.name}</strong>"?</p>
             <p>Это действие нельзя отменить.</p>
             
-            <div className="modal-actions">
+            <div className="admin-modal-actions">
               <button
                 onClick={handleDeleteCancel}
-                className="cancel-btn"
+                className="admin-cancel-btn"
                 disabled={deleteLoading}
               >
                 Отмена
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="delete-confirm-btn"
+                className="admin-delete-confirm-btn"
                 disabled={deleteLoading}
               >
                 {deleteLoading ? 'Удаление...' : 'Удалить'}

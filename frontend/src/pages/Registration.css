@@ -287,3 +287,24 @@
   height: 0%;
   opacity: 0;
 }
+
+.error-message {
+  color: #dc3545;
+  font-size: 14px;
+  margin: 10px 10px;
+  text-align: center;
+  background: rgba(220, 53, 69, 0.1);
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

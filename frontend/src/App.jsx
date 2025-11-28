@@ -1,58 +1,121 @@
-import './App.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+
+import './App.css';
+import Header from './components/layout/Header/Header'
+import HeaderForLogined from './components/layout/Header/HeaderForLogined'
 import Create from './pages/admin/Create';
 import Cart from './pages/Cart';
 import Registration from './pages/Registration';
 import ProductDetail from './pages/ProductDetail';
 import AdminProducts from './pages/admin/AdminProducts'; 
 import AdminPanel from './pages/admin/AdminPanel';
+import { getCategoryFromParameters } from './utils/parameters';
+import { 
+  loadProducts, 
+  getFullImageUrl, 
+  deleteProduct 
+} from './utils/loadProductsAndDelete';
+import PersonalAccount from './pages/PersonalAccount';
 import axios from 'axios';
-import Header from './components/layout/Header/Header'
-import { getAll } from './services/api';
-
-
-const DeleteProduct = async (id) => {
-  await axios.delete('/product/' + id)
-}
-
-// базовый URL S3
-const getFullImageUrl = (filename) => {
-  const url = `https://electronic.s3.regru.cloud/products/${filename}`;
-  return url;
-};
 
 const App = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Проверяем авторизацию при загрузке приложения
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      if (token) {
+        // Если есть токен, проверяем его валидность на сервере
+        const response = await axios.get('/api/auth/check', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.status === 200) {
+          setIsLoggedIn(true);
+        } else {
+          // Если токен невалидный, удаляем его
+          localStorage.removeItem('authToken');
+          setIsLoggedIn(false);
+        }
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch (error) {
+      console.error('Ошибка при проверке авторизации:', error);
+      // Если ошибка 401 (Unauthorized) или другая, считаем пользователя неавторизованным
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem('authToken');
+      }
+      setIsLoggedIn(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Функции для управления авторизацией
+  const handleLogin = (token) => {
+    localStorage.setItem('authToken', token);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    setIsLoggedIn(false);
+  };
+
+  // Если проверка авторизации еще идет, показываем заглушку
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-spinner"></div>
+        <p>Загрузка...</p>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
         <Route path="/create" element={<Create />} />
-        <Route path="/Cart" element={<Cart />} />
-        <Route path="/Registration" element={<Registration />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/admin/products" element={<AdminProducts />} />
-        <Route path="/admin/create" element={<Create />} />
+        <Route path="/Cart" element={<Cart isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
+        <Route path="/registration" element={<Registration onLogin={handleLogin} />} />
+        <Route path="/personal" element={<PersonalAccount isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
+        <Route path="/product/:id" element={<ProductDetail isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
+        <Route path="/admin" element={<AdminPanel isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
+        <Route path="/admin/products" element={<AdminProducts isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
+        <Route path="/admin/create" element={<Create isLoggedIn={isLoggedIn} onLogout={handleLogout} />} />
       </Routes>
     </Router>
   );
 }
 
-
-function HomePage() {
+function HomePage({ isLoggedIn, onLogout }) {
   return (
     <div className="App">
-      <Header />
+      {isLoggedIn ? (
+        <HeaderForLogined onLogout={onLogout} />
+      ) : (
+        <Header />
+      )}
       <ShoppingList_box>
-        <ShoppingList />
+        <ShoppingList isLoggedIn={isLoggedIn} />
       </ShoppingList_box>
     </div>
   );
 }
 
-
-function ShoppingList() {
+function ShoppingList({ isLoggedIn }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [products, setProducts] = useState([]);
@@ -61,89 +124,51 @@ function ShoppingList() {
 
   // Загрузка товаров при монтировании компонента
   useEffect(() => {
-    loadProducts();
+    loadProductsData();
   }, []);
  
-  // for (let i = 1; i < 15; i ++){
-  //   DeleteProduct(i)
-  // }
-  
-
-  const loadProducts = async () => {
+  const loadProductsData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Используем функцию getAll для загрузки товаров
-      const productsData = await getAll();
-      setProducts(productsData);
+      const result = await loadProducts();
+      setProducts(result.data);
+      
+      if (!result.success && result.error) {
+        setError(result.error);
+      }
       
     } catch (err) {
-      setError('Не удалось загрузить товары');
+      setError('Неожиданная ошибка при загрузке товаров');
       console.error('Ошибка загрузки:', err);
-      
-      // Если API не доступно, используем mock данные
-      setProducts(getMockProducts());
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock данные на случай если бэкенд не доступен
-  const getMockProducts = () => [
-    { id: 1, name: "iPhone 14", price: 79999, image: "/img/iphone_14.jpg", category: "Смартфоны" },
-    { id: 2, name: "MacBook Air", price: 99999, image: "/img/macbook_air.jpg", category: "Ноутбуки" },
-    { id: 3, name: "AirPods", price: 12999, image: "/img/airpods.jpg", category: "Аксессуары" },
-    { id: 4, name: "iPad", price: 39999, image: "/img/ipad.jpg", category: "Планшеты" },
-    { id: 5, name: "Samsung Galaxy", price: 69999, image: "/img/iphone_14.jpg", category: "Смартфоны" },
-    { id: 6, name: "Dell XPS", price: 89999, image: "/img/macbook_air.jpg", category: "Ноутбуки" },
-  ];
-
-  const getCategoryFromParameters = (parametersString) => {
-    if (!parametersString) return '';
-      // Разделяем строку по |
-      const pairs = parametersString.split('|');
-      
-      // Ищем параметр с ключом "Категория"
-      for (let pair of pairs) {
-        const [key, value] = pair.split('=');
-        if (key && value && key.trim() === 'Категория') {
-          return value.trim();
-        }
-      }
-    }
-
   const handleBuyClick = (product) => {
-    // 1. Открываем модальное окно (оригинальный функционал)
+    
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
   
   const handleConfirm = () => {
-    // 2. Добавляем товар в корзину при подтверждении
     const cartItem = {
       ...selectedProduct,
       quantity: 1
     };
     
-    // Получаем текущую корзину из localStorage
     const existingCart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
-    
-    // Проверяем, есть ли уже такой товар в корзине
     const existingItemIndex = existingCart.findIndex(item => item.id === selectedProduct.id);
     
     if (existingItemIndex >= 0) {
-      // Увеличиваем количество, если товар уже в корзине
       existingCart[existingItemIndex].quantity += 1;
     } else {
-      // Добавляем новый товар
       existingCart.push(cartItem);
     }
     
-    // Сохраняем обновленную корзину
     localStorage.setItem('electronic_cart', JSON.stringify(existingCart));
-    
-    // Триггерим событие обновления корзины
     window.dispatchEvent(new Event('cartUpdated'));
     
     setIsModalOpen(false);
@@ -156,7 +181,7 @@ function ShoppingList() {
   };
 
   const refreshProducts = () => {
-    loadProducts();
+    loadProductsData();
   };
 
   if (loading) {
@@ -172,7 +197,7 @@ function ShoppingList() {
     return (
       <div className="error-container">
         <p>{error}</p>
-        <button onClick={loadProducts} className="retry-btn">
+        <button onClick={loadProductsData} className="retry-btn">
           Попробовать снова
         </button>
       </div>
@@ -182,7 +207,6 @@ function ShoppingList() {
   return (
     <>
       <div className="shop_products">
-        {/* Кнопка обновления (опционально) */}
         <div className="products-header">
           <h2>Список товаров ({products.length})</h2>
           <button onClick={refreshProducts} className="refresh-btn">
@@ -193,7 +217,6 @@ function ShoppingList() {
         <div className="products-grid">
             {products.map(product => (
               <div key={product.id} className="product-card">
-                {/* Обертка для кликабельной области */}
                 <Link to={`/product/${product.id}`} className="product-card-link">
                   <img 
                     src={getFullImageUrl(product.images[0])} 
@@ -206,13 +229,12 @@ function ShoppingList() {
                   </div>
                 </Link>
             
-                {/* Секция с ценой и кнопкой - НЕ кликабельная */}
                 <div className="price-section">
                   <span className="price">{product.price.toLocaleString()} ₽</span>
                   <button 
                     className="buy-btn" 
                     onClick={(e) => {
-                      e.stopPropagation(); // Останавливаем всплытие события
+                      e.stopPropagation();
                       handleBuyClick(product);
                     }}
                   >
@@ -223,13 +245,14 @@ function ShoppingList() {
             ))}
         </div>
           
-
         {products.length === 0 && !loading && (
           <div className="empty-state">
             <p>Товары не найдены</p>
-            <Link to="/create" className="create-first-product">
-              Добавить первый товар
-            </Link>
+            {isLoggedIn && (
+              <Link to="/create" className="create-first-product">
+                Добавить первый товар
+              </Link>
+            )}
           </div>
         )}
       </div>

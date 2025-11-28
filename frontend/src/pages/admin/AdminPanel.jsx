@@ -47,12 +47,12 @@ function AdminPanel() {
                 </Link>
                 
                 {item.dropdown && (
-                  <div className="dropdown-menu">
+                  <div className="admin-dropdown-menu">
                     {item.dropdown.map(dropdownItem => (
                       <Link 
                         key={dropdownItem.path}
                         to={dropdownItem.path}
-                        className="dropdown-item"
+                        className="admin-dropdown-item"
                       >
                         {dropdownItem.label}
                       </Link>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCartCount } from '../../../hooks/useCartCount';
 import './Header.css'
 
-function Header() {
+function HeaderForLogined() {
     const cartCount = useCartCount();
   
     return (
@@ -44,8 +44,8 @@ function Header() {
               </div>
             </Link>
 
-            <Link to ="/registration" className=''>
-            <img src='/img/registration_and_login2.png' className='registration_and_login' style={{marginTop: "7px"}}></img>
+            <Link to ="/Personal" className=''>
+            <img src='/img/loggined.png' className='registration_and_login'></img>
             </Link>
             
           </div>
@@ -54,4 +54,4 @@ function Header() {
     );
   }
 
-export default Header
+export default HeaderForLogined
