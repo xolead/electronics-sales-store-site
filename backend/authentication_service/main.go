@@ -5,6 +5,9 @@ import (
 	"auth-service/pkg/handlers"
 	"context"
 	"log"
+	"time"
+
+	"github.com/gin-contrib/cors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +30,15 @@ func main() {
 	handler := handlers.NewHandler(db)
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://manage_service:8080"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"*"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	r.POST("/registration", handler.Registration)
 	r.POST("/login", handler.Login)
 

@@ -31,7 +31,7 @@ func RegistrationRequest(c *gin.Context, user models.User) (string, bool, error)
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8081/registration",
+		"http://auth_service:8081/registration",
 		bytes.NewBuffer(data),
 	)
 
@@ -81,7 +81,7 @@ func LoginRequest(user models.User) (string, bool, error) {
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8081/login",
+		"http://auth_service:8081/login",
 		bytes.NewBuffer(data),
 	)
 
@@ -140,7 +140,7 @@ func AuthorizationRequest(GUID string, admin bool) (models.Tokens, error) {
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8083/authorization",
+		"http://autoriz_service:8083/authorization",
 		bytes.NewBuffer(data),
 	)
 
@@ -184,7 +184,7 @@ func GUIDRequest(access string) (string, bool, error) {
 	{
 	}
 	resp, err := http.Get(
-		"http://localhost:8083/uuid/" + access)
+		"http://autoriz_service:8083/uuid/" + access)
 	if err != nil {
 		return "", false, fmt.Errorf("communication/Authentication client.Do: %v", err)
 	}
@@ -218,7 +218,7 @@ func RefreshRequest(access, refresh string) (models.Tokens, error) {
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8083/refresh",
+		"http://autoriz_service:8083/refresh",
 		bytes.NewBuffer(data),
 	)
 
@@ -264,7 +264,7 @@ func LogoutRequest(access string) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8083/logout",
+		"http://autoriz_service:8083/logout",
 		bytes.NewBuffer(data),
 	)
 

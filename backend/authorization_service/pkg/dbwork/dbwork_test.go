@@ -42,6 +42,12 @@ func EnableCheckSession_Success(t *testing.T, db *dbwork.DataBase) {
 
 	err = db.CheckActiveSession(ctx, GUID)
 	assert.NoError(t, err)
+
+	err = db.StopSession(ctx, GUID)
+	assert.NoError(t, err)
+
+	err = db.EnableSession(ctx, GUID)
+	assert.NoError(t, err)
 }
 
 func CheckSession_NotFound(t *testing.T, db *dbwork.DataBase) {
