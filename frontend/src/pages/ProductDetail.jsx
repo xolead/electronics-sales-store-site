@@ -1,83 +1,13 @@
-// pages/ProductDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
+
+
 import './ProductDetail.css';
+import Header from '../components/layout/Header/Header'
+import { getFullImageUrl } from '../utils/loadProductsAndDelete';
+import { parseParameters } from '../utils/parameters';
 
-// базовый URL S3
-const getFullImageUrl = (filename) => {
-  const url = `https://electronic.s3.regru.cloud/products/${filename}`;
-  return url;
-};
-
-// Функция для парсинга всех параметров
-const parseAllParameters = (parametersString) => {
-  if (!parametersString) return [];
-  
-  const parameters = [];
-  
-  try {
-    const pairs = parametersString.split('|');
-    
-    pairs.forEach(pair => {
-      // Убираем лишние пробелы и разбиваем по первому знаку =
-      const trimmedPair = pair.trim();
-      const equalsIndex = trimmedPair.indexOf('=');
-      
-      if (equalsIndex > 0) {
-        const key = trimmedPair.substring(0, equalsIndex).trim();
-        const value = trimmedPair.substring(equalsIndex + 1).trim();
-        
-        if (key && value) {
-          parameters.push({ key, value });
-        }
-      }
-    });
-    
-    return parameters;
-  } catch (error) {
-    console.error('Ошибка парсинга параметров:', error);
-    return [];
-  }
-};
-
-// Хук для отслеживания корзины
-const useCartCount = () => {
-  const [cartCount, setCartCount] = useState(0);
-
-  // Функция для обновления количества товаров в корзине
-  const updateCartCount = () => {
-    const cart = JSON.parse(localStorage.getItem('electronic_cart') || '[]');
-    // Подсчитываем количество различных товаров (по id)
-    const uniqueItemsCount = cart.length;
-    setCartCount(uniqueItemsCount);
-  };
-
-  // Слушаем изменения в localStorage
-  useEffect(() => {
-    updateCartCount();
-    
-    // Функция для обработки событий storage
-    const handleStorageChange = (e) => {
-      if (e.key === 'electronic_cart') {
-        updateCartCount();
-      }
-    };
-
-    // Слушаем события storage (из других вкладок)
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Слушаем custom event (из этой же вкладки)
-    window.addEventListener('cartUpdated', updateCartCount);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('cartUpdated', updateCartCount);
-    };
-  }, []);
-
-  return cartCount;
-};
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -93,7 +23,7 @@ const ProductDetail = () => {
 
   useEffect(() => {
     if (product && product.parameters) {
-      const parsedParams = parseAllParameters(product.parameters);
+      const parsedParams = parseParameters(product.parameters);
       setProductParameters(parsedParams);
     }
   }, [product]);
@@ -392,47 +322,5 @@ const ProductDetail = () => {
   );
 };
 
-// Компонент Header
-const Header = () => {
-  const cartCount = useCartCount();
-
-  return (
-    <div className="header">
-      <div className='header_box'>
-        <Link to="/cart" className="cart-link">
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img src="/img/cart.png" className='cart' alt="Cart" />
-            {cartCount > 0 && (
-              <span 
-                className="cart-count-badge"
-                style={{
-                  position: 'absolute',
-                  top: '-5px',
-                  right: '-5px',
-                  backgroundColor: '#ff4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '20px',
-                  height: '20px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}
-              >
-                {cartCount}
-              </span>
-            )}
-          </div>
-        </Link>
-        <Link to="/" className="create-link">
-          Главная  
-        </Link>
-      </div>
-    </div>
-  );
-};
 
 export default ProductDetail;

@@ -2,6 +2,14 @@ import React, { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import "./Create.css";
 import axios from "axios";
+import {
+    addParameter,
+    updateParameter,
+    removeParameter,
+    parseParameters,
+    prepareParametersForSubmit,
+    validateParameters
+} from '../../utils/parameters'
 
 const Create = () => {
   const [productData, setProductData] = useState({
@@ -20,23 +28,8 @@ const Create = () => {
   // Функция создания продукта
   const createProductAndGetUrls = async (productData, fileNames) => {
     try {
-      // Формируем строку параметров в формате: ключ=значение|ключ=значение
-      const parametersArray = [];
-      
-      // Добавляем категорию как первый параметр
-      if (productData.category) {
-        parametersArray.push(`Категория=${productData.category}`);
-      }
-      
-      // Добавляем остальные параметры
-      parameters.forEach(param => {
-        if (param.key && param.value) {
-          parametersArray.push(`${param.key}=${param.value}`);
-        }
-      });
-      
-      // Объединяем все параметры через |
-      const parametersString = parametersArray.join('|');
+      // Формируем строку параметров с помощью новой функции
+      const parametersString = prepareParametersForSubmit(parameters, productData.category);
 
       const response = await axios.post(
         "/product",
@@ -60,16 +53,6 @@ const Create = () => {
       console.error("Ошибка при создании товара:", error);
       throw error;
     }
-  };
-
-  // Функция для парсинга параметров (можно использовать на других страницах)
-  const parseParameters = (parametersString) => {
-    if (!parametersString) return [];
-    
-    return parametersString.split('|').map(param => {
-      const [key, value] = param.split('=');
-      return { key: key || '', value: value || '' };
-    });
   };
 
   // Функция загрузки файлов на S3
@@ -102,19 +85,17 @@ const Create = () => {
     }));
   };
 
-  // Функции для работы с динамическими параметрами
-  const addParameter = () => {
-    setParameters([...parameters, { key: "", value: "", id: Date.now() }]);
+  // Обработчики для параметров
+  const handleAddParameter = () => {
+    addParameter(parameters, setParameters);
   };
 
-  const updateParameter = (id, field, value) => {
-    setParameters(parameters.map(param => 
-      param.id === id ? { ...param, [field]: value } : param
-    ));
+  const handleUpdateParameter = (id, field, value) => {
+    updateParameter(parameters, setParameters, id, field, value);
   };
 
-  const removeParameter = (id) => {
-    setParameters(parameters.filter(param => param.id !== id));
+  const handleRemoveParameter = (id) => {
+    removeParameter(parameters, setParameters, id);
   };
 
   const handleFileSelect = (files) => {
@@ -192,10 +173,10 @@ const Create = () => {
       return;
     }
 
-    // Проверяем, что все параметры заполнены
-    const incompleteParameters = parameters.filter(param => !param.key || !param.value);
-    if (incompleteParameters.length > 0) {
-      alert("Пожалуйста, заполните все добавленные параметры (название и значение)");
+    // Проверяем параметры с помощью новой функции
+    const validation = validateParameters(parameters);
+    if (!validation.isValid) {
+      alert(`Пожалуйста, заполните все добавленные параметры (${validation.incompleteCount} не заполнено)`);
       return;
     }
 
@@ -238,8 +219,8 @@ const Create = () => {
     <div className="create-page">
       <header className="header">
         <div className='header_box'>
-          <Link to="/" className="home-link">
-            Главная
+          <Link to="/admin/products" className="home-link">
+            Вернуться
           </Link>
         </div>
       </header>
@@ -385,7 +366,7 @@ const Create = () => {
                 <button 
                   type="button" 
                   className="add-parameter-btn"
-                  onClick={addParameter}
+                  onClick={handleAddParameter}
                 >
                   + Добавить характеристику
                 </button>
@@ -401,7 +382,7 @@ const Create = () => {
                     type="text"
                     placeholder="Название"
                     value={param.key}
-                    onChange={(e) => updateParameter(param.id, 'key', e.target.value)}
+                    onChange={(e) => handleUpdateParameter(param.id, 'key', e.target.value)}
                     className="parameter-key"
                   />
                   <span className="parameter-equals"></span>
@@ -409,13 +390,13 @@ const Create = () => {
                     type="text"
                     placeholder="Значение"
                     value={param.value}
-                    onChange={(e) => updateParameter(param.id, 'value', e.target.value)}
+                    onChange={(e) => handleUpdateParameter(param.id, 'value', e.target.value)}
                     className="parameter-value"
                   />
                   <button
                     type="button"
                     className="remove-parameter-btn"
-                    onClick={() => removeParameter(param.id)}
+                    onClick={() => handleRemoveParameter(param.id)}
                   >
                     ×
                   </button>
